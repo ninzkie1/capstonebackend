@@ -1,373 +1,372 @@
-import React, { useState, useEffect } from "react";
-import {
-  Modal,
-  Box,
-  Typography,
-  TextField,
-  Grid,
-  Checkbox,
-  FormControlLabel,
-  Button,
-  Card,
-  CardContent,
-  Avatar,
-  CircularProgress, // Import CircularProgress for loading state
-} from "@mui/material";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axiosClient from '../axiosClient';
 import { useStateContext } from "../context/contextprovider";
+import Rating from '@mui/material/Rating';
+import { VolumeUp, VolumeOff } from '@mui/icons-material';
+import profile from '../assets/Ilk.jpg';
+import profilebg from '../assets/bg.jpg';
+import ChatCustomer from './ChatCustomer';
 
 export default function Customer() {
-  const talents = ["Singer", "Dancer", "Musician", "Band", "Entertainer", "DJ"];
-  const { user } = useStateContext();
-  const [posts, setPosts] = useState([]);
-  const [postForm, setPostForm] = useState({
-    id: null,
-    clientName: user ? user.name : "",
-    eventName: "",
-    startTime: "",
-    endTime: "",
-    description: "",
-    talents: [],
-  });
-  const [showFormPopup, setShowFormPopup] = useState(false);
-  const [comments, setComments] = useState({});
-  const [loading, setLoading] = useState(false); // State for loading
-
-  // Fetch all posts from the Laravel API
-  const fetchPosts = async () => {
-    setLoading(true); // Set loading to true
-    try {
-      const response = await fetch("http://127.0.0.1:8000/api/posts");
-      if (!response.ok) throw new Error("Failed to fetch posts");
-      const data = await response.json();
-      setPosts(data);
-      const initialComments = {};
-      data.forEach((post) => {
-        initialComments[post.id] = "";
-      });
-      setComments(initialComments);
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-      alert("Failed to fetch posts. Please try again later."); // User feedback
-    } finally {
-      setLoading(false); // Set loading to false
-    }
-  };
-
-  useEffect(() => {
-    fetchPosts();
-  }, []);
-
-  const handlePostChange = (e) => {
-    const { name, value } = e.target;
-    setPostForm({ ...postForm, [name]: value });
-  };
-
-  const handleEdit = (post) => {
-    setPostForm({
-      id: post.id,
-      clientName: post.client_name,
-      eventName: post.event_name,
-      startTime: post.start_time,
-      endTime: post.end_time,
-      description: post.description,
-      talents: Array.isArray(post.talents) ? post.talents : post.talents.split(","),
+    const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+    const [isFilteredModalOpen, setIsFilteredModalOpen] = useState(false);
+    const [filteredPerformers, setFilteredPerformers] = useState([]);
+    const [isMuted, setIsMuted] = useState([]);
+    const [performers, setPerformers] = useState([]);
+    const [events, setEvents] = useState([]);
+    const [themes, setThemes] = useState([]);
+    const [formData, setFormData] = useState({
+        event_id: '',
+        theme_id: ''
     });
-    setShowFormPopup(true);
-  };
 
-  const handlePostSubmit = async (e) => {
-    e.preventDefault();
-    const requestData = { ...postForm };
-    setLoading(true); // Set loading to true
-    try {
-      let response;
-      if (postForm.id) {
-        response = await fetch(`http://127.0.0.1:8000/api/posts/${postForm.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestData),
+    const { user } = useStateContext();
+    const navigate = useNavigate();
+    const highlightsRef = useRef(null);
+
+    // Fetch performers and events when component mounts
+    useEffect(() => {
+        axiosClient.get('/performervid')
+            .then((response) => {
+                if (response.data.status === 'success') {
+                    const performersData = response.data.data;
+                    const sortedPerformers = performersData.sort(
+                        (a, b) => b.performer_portfolio?.average_rating - a.performer_portfolio?.average_rating
+                    );
+                    setPerformers(sortedPerformers);
+                    // Initialize mute state for each performer's highlight video (all muted initially)
+                    setIsMuted(performersData.map(() => true));
+                }
+            })
+            .catch((error) => {
+                console.error('Error fetching performers:', error);
+            });
+
+        axiosClient.get('/events')
+            .then((response) => {
+                setEvents(response.data);
+            })
+            .catch((error) => console.error('Error fetching events:', error));
+
+        if (user) {
+            if (user.role === 'admin') {
+                navigate('/managepost');
+            } else if (user.role === 'client') {
+                navigate('/customer');
+            } else if (user.role === 'performer') {
+                navigate('/post');
+            }
+        }
+    }, [user, navigate]);
+
+    // Navigate to the portfolio details using portfolioId
+    const handleSeeDetails = (performer) => {
+        navigate(`/portfolio/${performer.performer_portfolio.id}`);
+    };
+
+    const toggleMute = (index) => {
+        setIsMuted((prevMuted) => {
+            const newMutedState = [...prevMuted];
+            newMutedState[index] = !newMutedState[index];
+            return newMutedState;
         });
-      } else {
-        response = await fetch("http://127.0.0.1:8000/api/posts", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestData),
+    };
+
+    const handleBookNowClick = () => setIsBookingModalOpen(true);
+    const handleBookingFormClose = () => setIsBookingModalOpen(false);
+
+    // Handle event change and load corresponding themes
+    const handleEventChange = (e) => {
+        const eventId = e.target.value;
+        setFormData({ ...formData, event_id: eventId, theme_id: '' });
+
+        axiosClient.get(`/events/${eventId}/themes`)
+            .then((response) => {
+                setThemes(response.data);
+            })
+            .catch((error) => console.error('Error fetching themes:', error));
+    };
+
+    const handleThemeChange = (e) => {
+        setFormData({ ...formData, theme_id: e.target.value });
+    };
+
+    // Fetch performers filtered by selected event and theme
+    const handleBookingSubmit = async (e) => {
+        e.preventDefault();
+        const { event_id, theme_id } = formData;
+
+        if (event_id && theme_id) {
+            try {
+                await axiosClient
+                    .get('/filter-performers', {
+                        params: {
+                            event_id,
+                            theme_id,
+                        },
+                    })
+                    .then((response) => {
+                        setFilteredPerformers(response.data);
+                        setIsFilteredModalOpen(true);
+                    });
+            } catch (error) {
+                console.error('Error fetching filtered performers:', error);
+            }
+        }
+
+        setIsBookingModalOpen(false);
+    };
+
+    const handleFilteredModalClose = () => setIsFilteredModalOpen(false);
+
+    // Handle booking performer directly from their card
+    const handleBookPerformer = (performer) => {
+        // Redirect to the booking page with the selected performer
+        navigate("/addBook", {
+            state: {
+                performer,
+                performerId: performer.performer_portfolio.id
+            }
         });
-      }
+    };
 
-      if (!response.ok) throw new Error("Failed to save post");
-      fetchPosts();
-      setPostForm({
-        id: null,
-        clientName: user ? user.name : "",
-        eventName: "",
-        startTime: "",
-        endTime: "",
-        description: "",
-        talents: [],
-      });
-      setShowFormPopup(false);
-    } catch (error) {
-      console.error("Error saving post:", error);
-      alert("Failed to save the post. Please try again."); // User feedback
-    } finally {
-      setLoading(false); // Set loading to false
-    }
-  };
-
-  const handleDelete = async (postId) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this post?");
-    if (confirmDelete) {
-      setLoading(true); // Set loading to true
-      try {
-        const response = await fetch(`http://127.0.0.1:8000/api/posts/${postId}`, {
-          method: "DELETE",
-        });
-        if (!response.ok) throw new Error("Failed to delete post");
-        fetchPosts();
-      } catch (error) {
-        console.error("Error deleting post:", error);
-        alert("Failed to delete the post. Please try again."); // User feedback
-      } finally {
-        setLoading(false); // Set loading to false
-      }
-    }
-  };
-
-  const handleTalentChange = (talent) => {
-    setPostForm((prevForm) => {
-      const updatedTalents = prevForm.talents.includes(talent)
-        ? prevForm.talents.filter((t) => t !== talent)
-        : [...prevForm.talents, talent];
-      return { ...prevForm, talents: updatedTalents };
-    });
-  };
-
-  const handleCommentSubmit = async (postId) => {
-    const comment = comments[postId].trim();
-    if (comment) {
-      setLoading(true); // Set loading to true
-      try {
-        const response = await fetch(`http://127.0.0.1:8000/api/posts/${postId}/comments`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user_id: user.id,
-            content: comment,
-          }),
-        });
-
-        if (!response.ok) throw new Error("Failed to submit comment");
-        fetchPosts();
-        setComments({ ...comments, [postId]: "" });
-      } catch (error) {
-        console.error("Error submitting comment:", error);
-        alert("Failed to submit the comment. Please try again."); // User feedback
-      } finally {
-        setLoading(false); // Set loading to false
-      }
-    } else {
-      alert("Comment cannot be empty");
-    }
-  };
-
-  return (
-    <div className="p-4">
-      <header className="mb-4">
-        <h1 className="text-2xl font-bold text-center mb-4">Book a Talent for Your Event!</h1>
-      </header>
-
-      <div className="text-center mt-4">
-        <button onClick={() => setShowFormPopup(true)} className="p-2 bg-blue-500 text-white rounded-md">
-          Submit a Request
-        </button>
-      </div>
-
-      <div className="container mx-auto">
-        <Typography variant="h6" gutterBottom>
-          List of Submitted Requests:
-        </Typography>
-
-        {loading ? (
-          <CircularProgress /> // Show loading spinner while fetching posts
-        ) : posts.length > 0 ? (
-          posts.map((post) => (
-            <Card key={post.id} sx={{ marginBottom: 2 }}>
-              <CardContent>
-                <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
-                  {post.user?.image_profile ? (
-                    <Avatar src={post.user.image_profile} alt={post.client_name} sx={{ marginRight: 2 }} />
-                  ) : (
-                    <Avatar sx={{ bgcolor: "#2196f3", marginRight: 2 }}>
-                      <AccountCircleIcon />
-                    </Avatar>
-                  )}
-                  <Typography variant="h6" component="div">
-                    {post.client_name}
-                  </Typography>
+    return (
+        <div className="flex flex-col min-h-screen relative">
+            <div className="absolute inset-0 bg-black opacity-50"></div>
+            <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 max-w-7xl mx-auto bg-cover bg-center relative overflow-hidden rounded-lg shadow-md" style={{ backgroundImage: "url('/talent.png')" }}>
+                {/* Hero Section */}
+                <div className="text-center mb-12 z-10">
+                    <h2 className="text-4xl font-extrabold text-white mb-4 animate-bounce">
+                        Welcome to Talento
+                    </h2>
+                    <p className="text-lg text-gray-200 mb-6">
+                        Discover and book talented performers for your events. Browse through our selection of artists and find the perfect fit for your next occasion.
+                    </p>
+                    <button
+                        onClick={handleBookNowClick}
+                        className="bg-gradient-to-r from-indigo-600 to-indigo-500 text-white px-6 py-3 rounded-full text-lg font-semibold hover:from-indigo-700 hover:to-indigo-600 transition-transform duration-300 shadow-lg transform hover:scale-105"
+                    >
+                        Book Now!
+                    </button>
                 </div>
 
-                <Typography variant="body1" color="textPrimary">
-                  <strong>Event Name:</strong> {post.event_name}
-                </Typography>
-
-                <Typography variant="body2" color="textSecondary">
-                  <strong>From:</strong> {post.start_time} <strong>To:</strong> {post.end_time}
-                </Typography>
-
-                <Typography variant="body1" color="textPrimary">
-                  <strong>Description:</strong> {post.description}
-                </Typography>
-
-                <Typography variant="body1" color="textPrimary">
-                  <strong>Categories:</strong> {Array.isArray(post.talents) ? post.talents.join(", ") : post.talents}
-                </Typography>
-
-                <div style={{ marginTop: 16 }}>
-                  <Button variant="outlined" color="primary" onClick={() => handleEdit(post)} style={{ marginRight: 8 }}>
-                    Edit
-                  </Button>
-                  <Button variant="outlined" color="secondary" onClick={() => handleDelete(post.id)}>
-                    Delete
-                  </Button>
-                </div>
-
-                {/* Comment Section */}
-                <div style={{ marginTop: 16 }}>
-                  <TextField
-                    fullWidth
-                    label="Add Comment"
-                    value={comments[post.id] || ""}
-                    onChange={(e) => setComments({ ...comments, [post.id]: e.target.value })}
-                    margin="normal"
-                  />
-                  <Button variant="contained" color="primary" onClick={() => handleCommentSubmit(post.id)}>
-                    Submit Comment
-                  </Button>
-                </div>
-
-                <Typography variant="h6" style={{ marginTop: 25 }}>Comments:</Typography>
-                {post.comments && post.comments.length > 0 ? (
-                  post.comments.map((comment, index) => (
-                    <div key={index} style={{ marginLeft: 20, marginBottom: 10, border: '1px solid #ccc', borderRadius: 4, padding: 8, display: 'flex', alignItems: 'center' }}>
-                      {comment.user?.avatar ? (
-                        <Avatar src={comment.user.avatar} alt={comment.user.name} sx={{ marginRight: 2 }} />
-                      ) : (
-                        <Avatar sx={{ bgcolor: "#2196f3", marginRight: 2 }}>
-                          <AccountCircleIcon />
-                        </Avatar>
-                      )}
-                      <div>
-                        <Typography variant="body2" color="textSecondary">
-                          <strong>{comment.user ? comment.user.name : "Unknown User"}</strong>
-                          <span style={{ marginLeft: 8, fontStyle: 'italic', fontSize: '0.9em' }}>
-                            {new Date(comment.created_at).toLocaleString()}
-                          </span>
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          - {comment.content}
-                        </Typography>
-                      </div>
+                {/* Highlights Section */}
+                <section ref={highlightsRef} className="w-full bg-yellow-600 py-16 px-4 z-10">
+                    <div className="max-w-7xl mx-auto text-center">
+                        <h3 className="text-3xl font-semibold text-white mb-4">Performers</h3>
+                        <p className="text-lg text-gray-200 mb-6">
+                            Discover the best moments from our top talents and watch them in action.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {performers.map((performer, index) => (
+                                <div key={index} className="relative group overflow-hidden rounded-lg shadow-lg transition-all duration-500 hover:shadow-2xl bg-white border border-gray-200">
+                                    {performer.performer_portfolio?.highlights?.[0]?.highlight_video ? (
+                                        <div className="relative">
+                                            <video
+                                                className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
+                                                src={`http://192.168.254.116:8000/storage/${performer.performer_portfolio.highlights[0].highlight_video}`}
+                                                autoPlay
+                                                loop
+                                                muted={isMuted[index]}
+                                                playsInline
+                                            />
+                                            <button
+                                                className="absolute bottom-4 right-4 bg-black bg-opacity-60 rounded-full p-3 text-white transition-transform duration-300 hover:scale-110"
+                                                onClick={() => toggleMute(index)}
+                                            >
+                                                {isMuted[index] ? <VolumeOff /> : <VolumeUp />}
+                                            </button>
+                                            {/* Circular Profile Picture Positioned at the Bottom Left */}
+                                            <img
+                                                src={performer.image_profile ? `http://192.168.254.116:8000/storage/${performer.image_profile}` : profile}
+                                                alt={performer.name}
+                                                className="absolute -bottom-6 left-4 w-16 h-16 rounded-full border-4 border-white object-cover transform translate-y-1/2"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <img
+                                            src={performer.image_profile ? `http://192.168.254.116:8000/storage/${performer.image_profile}` : profile}
+                                            alt={performer.name}
+                                            className="w-full h-48 object-cover"
+                                        />
+                                    )}
+                                    {/* Performer Details */}
+                                    <div className="p-4">
+                                        <h3 className="text-lg font-semibold mb-1">{performer.name} {performer.lastname}</h3>
+                                        <p className="text-base font-semibold mb-1 text-left">
+                                            <label>Talent:</label> {performer.performer_portfolio?.talent_name}
+                                        </p>
+                                        <p className="text-base font-semibold mb-1 text-left">
+                                            <label>Location:</label> {performer.performer_portfolio?.location}
+                                        </p>
+                                        <p className="text-base font-semibold mb-1 text-left">
+                                            <label>Rate Per Booking:</label> {performer.performer_portfolio?.rate} TCoins
+                                        </p>
+                                        <div className="flex items-center mt-2">
+                                            <span className="mr-2 font-semibold">Rating:</span>
+                                            <Rating
+                                                value={performer.performer_portfolio?.average_rating || 0.0}
+                                                precision={0.5}
+                                                readOnly
+                                            />
+                                        </div>
+                                    </div>
+                                    {/* Action Buttons */}
+                                    <div className="p-4 flex flex-wrap justify-center gap-2">
+                                        <button
+                                            className="bg-blue-500 text-white px-3 py-2 rounded-md shadow hover:bg-blue-400 transition-colors duration-300 w-full md:w-auto"
+                                            onClick={() => handleSeeDetails(performer)}
+                                        >
+                                            See Details
+                                        </button>
+                                        <button
+                                            className="bg-green-500 text-white px-3 py-2 rounded-md shadow hover:bg-green-400 transition-colors duration-300 w-full md:w-auto"
+                                            onClick={() => handleBookPerformer(performer)}
+                                        >
+                                            Book
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                  ))
-                ) : (
-                  <Typography variant="body2" color="textSecondary" style={{ marginLeft: 16 }}>
-                    No comments yet.
-                  </Typography>
+                </section>
+
+                {/* Booking Modal */}
+                {isBookingModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
+                        <div className="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md">
+                            <h3 className="text-2xl font-semibold mb-4">Book a Performer</h3>
+                            <form onSubmit={handleBookingSubmit}>
+                                <div className="mb-6">
+                                    <label htmlFor="event_name" className="block text-gray-800 font-semibold mb-2">
+                                        Event Name
+                                    </label>
+                                    <select
+                                        id="event_name"
+                                        name="event_id"
+                                        value={formData.event_id}
+                                        onChange={handleEventChange}
+                                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                        required
+                                    >
+                                        <option value="">Select Event</option>
+                                        {events.map(event => (
+                                            <option key={event.id} value={event.id}>
+                                                {event.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="mb-6">
+                                    <label htmlFor="theme_name" className="block text-gray-800 font-semibold mb-2">
+                                        Theme Name
+                                    </label>
+                                    <select
+                                        id="theme_name"
+                                        name="theme_id"
+                                        value={formData.theme_id}
+                                        onChange={handleThemeChange}
+                                        className="w-full border border-gray-300 px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                        required
+                                        disabled={!formData.event_id}
+                                    >
+                                        <option value="">Select Theme</option>
+                                        {themes.map(theme => (
+                                            <option key={theme.id} value={theme.id}>
+                                                {theme.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex justify-between">
+                                    <button
+                                        type="submit"
+                                        className="bg-gradient-to-r from-indigo-600 to-indigo-500 text-white px-5 py-3 rounded-full shadow hover:from-indigo-700 hover:to-indigo-600 transition-transform duration-300 transform hover:scale-105"
+                                    >
+                                        Submit
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="bg-gray-600 text-white px-5 py-3 rounded-full shadow hover:bg-gray-500 transition-transform duration-300 transform hover:scale-105"
+                                        onClick={handleBookingFormClose}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 )}
 
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <Typography variant="body2" color="textSecondary">No posts available.</Typography>
-        )}
-      </div>
-
-      <Modal open={showFormPopup} onClose={() => setShowFormPopup(false)}>
-        <Box sx={{ width: 400, bgcolor: "background.paper", padding: 4, borderRadius: 2 }}>
-          <Typography variant="h6" component="h2" gutterBottom>
-            {postForm.id ? "Edit Your Request" : "Submit a Request"}
-          </Typography>
-          <form onSubmit={handlePostSubmit}>
-            <TextField
-              label="Client Name"
-              name="clientName"
-              value={postForm.clientName}
-              onChange={handlePostChange}
-              fullWidth
-              margin="normal"
-              disabled
-            />
-            <TextField
-              label="Event Name"
-              name="eventName"
-              value={postForm.eventName}
-              onChange={handlePostChange}
-              fullWidth
-              margin="normal"
-              required
-            />
-            <TextField
-              label="Start Time"
-              name="startTime"
-              value={postForm.startTime}
-              onChange={handlePostChange}
-              fullWidth
-              margin="normal"
-              required
-            />
-            <TextField
-              label="End Time"
-              name="endTime"
-              value={postForm.endTime}
-              onChange={handlePostChange}
-              fullWidth
-              margin="normal"
-              required
-            />
-            <TextField
-              label="Description"
-              name="description"
-              value={postForm.description}
-              onChange={handlePostChange}
-              fullWidth
-              margin="normal"
-              multiline
-              rows={3}
-              required
-            />
-            <Typography variant="subtitle1">Select Talents:</Typography>
-            {talents.map((talent) => (
-              <FormControlLabel
-                key={talent}
-                control={
-                  <Checkbox
-                    checked={postForm.talents.includes(talent)}
-                    onChange={() => handleTalentChange(talent)}
-                  />
-                }
-                label={talent}
-              />
-            ))}
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
-              <Button variant="outlined" onClick={() => setShowFormPopup(false)} style={{ marginRight: 8 }}>
-                Cancel
-              </Button>
-              <Button variant="contained" color="primary" type="submit">
-                {postForm.id ? "Update Request" : "Submit Request"}
-              </Button>
-            </div>
-          </form>
-        </Box>
-      </Modal>
-    </div>
-  );
+                {/* Filtered Performers Modal */}
+                {isFilteredModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+                        <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl mx-auto">
+                            <h3 className="text-xl font-semibold mb-4">Available Performers</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {filteredPerformers.length > 0 ? (
+                                    filteredPerformers.map((performer, index) => (
+                                        <div key={index} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-md">
+                                            <img
+                                                src={performer.image_profile ? `http://192.168.254.116:8000/storage/${performer.image_profile}` : profile}
+                                                alt={performer.name}
+                                                className="w-full h-40 object-cover"
+                                            />
+                                            <div className="p-4">
+                                                <h3 className="text-lg font-semibold mb-2">{performer.name}</h3>
+                                                <p className="text-gray-600 font-semibold">
+                                                    <label>Talent:</label> {performer.performer_portfolio?.talent_name}
+                                                </p>
+                                                <p className="text-gray-600 font-semibold">
+                                                    <label>Rate per Booking:</label> {performer.performer_portfolio?.rate} TCoins
+                                                </p>
+                                                <p className="text-gray-600 font-semibold">
+                                                    <label>Location:</label> {performer.performer_portfolio?.location}
+                                                </p>
+                                                <div className="flex items-center mt-2">
+                                                    <span className="mr-2 font-semibold">Rating:</span>
+                                                    <Rating
+                                                        value={performer.performer_portfolio?.average_rating || 0.0}
+                                                        precision={0.5}
+                                                        readOnly
+                                                    />
+                                                </div>
+                                                <button
+                                                    className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md shadow hover:bg-blue-400 transition-colors duration-300 w-full"
+                                                    onClick={() => handleSeeDetails(performer)}
+                                                >
+                                                    See Details
+                                                </button>
+                                                <button
+                                                    className="mt-4 ml-0 bg-green-500 text-white px-4 py-2 rounded-md shadow hover:bg-green-400 transition-colors duration-300 w-full"
+                                                    onClick={() => handleBookPerformer(performer)}
+                                                >
+                                                    Book
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-center text-gray-600">No performers available for the selected event and theme.</p>
+                                )}
+                            </div>
+                            <div className="flex justify-end mt-4">
+                                <button
+                                    className="bg-gray-600 text-white px-4 py-2 rounded-md shadow hover:bg-gray-500 transition-colors duration-300"
+                                    onClick={handleFilteredModalClose}
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <ChatCustomer />
+            </main>
+        </div>
+    );
 }

@@ -21,22 +21,22 @@ class RegisterRequest extends FormRequest
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
     public function rules(): array
-    {
-        return [
-            'name' => 'required|string|max:255',
-            'lastname' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => [
-                'required',
-                Password::min(8)
-                    ->letters()
-                    ->mixedCase()
-                    ->numbers()
-                    ->symbols(),
-            ],
-            'role' => 'required|string|in:client,performer,admin', 
-        ];
-    }
+{
+    return [
+        'name' => 'required|string|max:255',
+        'lastname' => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email',
+        'password' => [
+            'required',
+            Password::min(8)
+                ->letters()
+                ->mixedCase()
+                ->numbers()
+                ->symbols(),
+        ],
+        'role' => 'required|string|in:client,performer,admin', 
+    ];
+}
 
     /**
      * Get the error messages for the defined validation rules.
@@ -52,8 +52,13 @@ class RegisterRequest extends FormRequest
             'email.email' => 'A valid email address is required',
             'email.unique' => 'This email address is already registered',
             'password.required' => 'A password is required',
+            'password.min' => 'Please make the password long than 8 letters',
+            'password.letters' => 'Password must contain at least one letter',
+            'password.mixed_case' => 'Password must contain both uppercase and lowercase characters',
+            'password.numbers' => 'Password must contain number',
+            'password.symbols' => 'Password must contain @ # ! $',
             'role.required' => 'A role is required',
-            'role.in' => 'The role must be either customer or performer',
+            'role.in' => 'The role must be either client, performer',
         ];
     }
 }

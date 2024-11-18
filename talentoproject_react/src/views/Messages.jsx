@@ -2,65 +2,116 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useOutletContext } from "react-router-dom";
 import { useStateContext } from "../context/contextprovider";
+import echo from "../echo";
+import {
+  Box,
+  Drawer,
+  Avatar,
+  Typography,
+  IconButton,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  AppBar,
+  Toolbar,
+  Button,
+  TextField,
+  useMediaQuery,
+  Paper,
+} from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import { useTheme } from "@mui/material/styles";
 
 export default function Messages() {
   const { isSidebarOpen } = useOutletContext();
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
+
   const { user } = useStateContext();
   const [message, setMessage] = useState("");
-  const [showConversations, setShowConversations] = useState(true);
   const [messages, setMessages] = useState([]);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.get('http://127.0.0.1:8000/api/users');
-        const filteredUsers = response.data.filter(u => u.role !== 'admin'); // Exclude admins
+        const response = await axios.get("http://192.168.254.116:8000/api/users");
+        const filteredUsers = response.data.filter(
+          (u) => u.role !== "admin" && u.id !== user.id
+        );
         setUsers(filteredUsers);
       } catch (error) {
-        console.error('Error fetching users:', error);
+        console.error("Error fetching users:", error);
       }
     };
 
     fetchUsers();
-  }, []);
+  }, [user.id]);
 
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (selectedUser) {
+    if (selectedUser) {
+      const fetchMessages = async () => {
         try {
-          const response = await axios.get('http://127.0.0.1:8000/api/chats', {
-            params: { user_id: selectedUser.id }
+          const response = await axios.get("http://192.168.254.116:8000/api/chats", {
+            params: {
+              user_id: user.id,
+              contact_id: selectedUser.id,
+            },
           });
           setMessages(response.data);
-        } catch (error) {
-          console.error('Error fetching messages:', error);
-        }
-      }
-    };
 
-    fetchMessages();
-  }, [selectedUser]);
+          echo.channel("chat-channel").listen(".message.sent", (e) => {
+            const newMessage = e.chat;
+            if (
+              (newMessage.sender_id === user.id && newMessage.receiver_id === selectedUser.id) ||
+              (newMessage.sender_id === selectedUser.id && newMessage.receiver_id === user.id)
+            ) {
+              setMessages((prevMessages) => {
+                if (!prevMessages.some((msg) => msg.id === newMessage.id)) {
+                  return [...prevMessages, newMessage];
+                }
+                return prevMessages;
+              });
+            }
+          });
+
+          return () => {
+            echo.leaveChannel("chat-channel");
+          };
+        } catch (error) {
+          console.error("Error fetching messages:", error);
+        }
+      };
+
+      fetchMessages();
+    }
+  }, [selectedUser, user.id]);
 
   const handleSendMessage = async () => {
     if (message.trim() !== "" && selectedUser) {
-      const newMessage = { sender_id: user.id, receiver_id: selectedUser.id, message };
-      setMessages([...messages, newMessage]);
+      const newMessage = {
+        sender_id: user.id,
+        receiver_id: selectedUser.id,
+        message,
+      };
+
       setMessage("");
 
       try {
-        const response = await axios.post('http://127.0.0.1:8000/api/chats', newMessage);
-        setMessages([...messages, response.data]); 
+        await axios.post("http://192.168.254.116:8000/api/chats", newMessage);
       } catch (error) {
-        console.error('Error sending message:', error);
+        console.error("Error sending message:", error);
       }
     }
   };
 
   const handleUserClick = (user) => {
     setSelectedUser(user);
-    setMessages([]); 
+    setMessages([]);
+    setDrawerOpen(false);
   };
 
   useEffect(() => {
@@ -71,77 +122,200 @@ export default function Messages() {
   }, [messages]);
 
   return (
-    <div className={`flex-1 flex flex-col h-screen transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-[20rem]' : 'ml-5'}`}>
-      <header className="bg-blue-300 shadow w-full">
-        <div className="flex justify-center items-center px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            CHAT
-          </h1>
-        </div>
-      </header>
-      
-      <div className="flex-1 flex overflow-hidden">
-        <div className={`w-64 bg-white border-r ${showConversations ? 'block' : 'hidden'} md:block`}>
-          <div className="p-4">
-            <h2 className="text-xl font-semibold mb-2">Active Conversations</h2>
-            <input type="text" placeholder="Search..." className="w-full p-2 border rounded" />
-            <ul>
-              {users.map((user) => (
-                <li key={user.id} onClick={() => handleUserClick(user)} className="flex items-center p-4 hover:bg-gray-100 cursor-pointer">
-                  <img src={`https://i.pravatar.cc/40?img=${user.id}`} alt={user.name} className="w-10 h-10 rounded-full mr-3" />
-                  <div>
-                    <p className="font-semibold">{user.name}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+    <Box sx={{ display: "flex", height: "85vh", bgcolor: "background.default" }}>
+      {/* AppBar for small screens */}
+      <AppBar
+        position="fixed"
+        sx={{
+          display: { md: "none" },
+          backgroundImage: "linear-gradient(to right, #1976d2, #1565c0)",
+          zIndex: theme.zIndex.drawer + 1,
+        }}
+      >
+        <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            aria-label="menu"
+            onClick={() => setDrawerOpen(true)}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+            {selectedUser ? selectedUser.name : "Select a user"}
+          </Typography>
+        </Toolbar>
+      </AppBar>
 
-        <div className="flex-1 flex flex-col">
-          <div className="bg-white border-b p-4 flex items-center">
-            <button 
-              className="md:hidden mr-4 text-2xl"
-              onClick={() => setShowConversations(!showConversations)}
-            >
-              ☰
-            </button>
-            <img src={`https://i.pravatar.cc/40?img=${selectedUser ? selectedUser.id : 0}`} alt={selectedUser ? selectedUser.name : "Select a user"} className="w-10 h-10 rounded-full mr-3" />
-            <h2 className="text-xl font-semibold">{selectedUser ? selectedUser.name : "Select a user"}</h2>
-          </div>
-
-          <div id="chatArea" className="flex-1 overflow-y-auto p-4 bg-gray-100">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`p-3 rounded-lg mb-2 max-w-xs ${msg.sender_id === user.id ? "bg-blue-100 ml-auto" : "bg-white"}`}
-              >
-                {msg.message}
-              </div>
+      {/* Drawer for user list */}
+      <Drawer
+        variant="temporary"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        sx={{
+          display: { xs: "block", md: "none" },
+          "& .MuiDrawer-paper": {
+            width: "80%",
+            backgroundColor: "#1976d2",
+            color: "#fff",
+          },
+        }}
+      >
+        <Box sx={{ width: 240 }}>
+          <Typography variant="h6" sx={{ p: 2, fontWeight: "bold", color: "#fff" }}>
+            Active Conversations
+          </Typography>
+          <List>
+            {users.map((user) => (
+              <ListItem button key={user.id} onClick={() => handleUserClick(user)}>
+                <ListItemAvatar>
+                  <Avatar src={`https://i.pravatar.cc/40?img=${user.id}`} />
+                </ListItemAvatar>
+                <ListItemText primary={user.name} />
+              </ListItem>
             ))}
-          </div>
+          </List>
+        </Box>
+      </Drawer>
 
-          <div className="bg-white border-t p-4">
-            <div className="flex items-center">
-              <input
-                type="text"
-                placeholder="Type something here"
-                className="flex-1 p-2 border rounded-l-lg"
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-              />
-              <button
-                className="bg-blue-500 text-white p-2 rounded-r-lg"
-                onClick={handleSendMessage}
+      {/* Persistent Sidebar for desktop */}
+      <Box
+        sx={{
+          display: { xs: "none", md: "block" },
+          width: isSidebarOpen ? 230 : 0,
+          transition: "width 0.3s ease",
+          overflow: "hidden",
+          backgroundColor: "#1976d2",
+          color: "#fff",
+          paddingTop: "64px",
+        }}
+      >
+        <Box sx={{ width: 240 }}>
+          <Typography variant="h6" sx={{ p: 2, fontWeight: "bold", color: "#fff" }}>
+            Active Conversations
+          </Typography>
+          <List>
+            {users.map((user) => (
+              <ListItem button key={user.id} onClick={() => handleUserClick(user)}>
+                <ListItemAvatar>
+                  <Avatar src={`https://i.pravatar.cc/40?img=${user.id}`} />
+                </ListItemAvatar>
+                <ListItemText primary={user.name} />
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      </Box>
+
+      {/* Chat area */}
+      <Box
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          marginLeft: isSidebarOpen && !isSmallScreen ? "240px" : 0,
+          transition: "margin-left 0.3s ease",
+          height: "100%",
+          bgcolor: "background.paper",
+          borderRadius: 2,
+        }}
+      >
+        {/* Chat Header */}
+        <Toolbar
+          sx={{
+            display: { xs: "none", md: "flex" },
+            borderBottom: "1px solid #ccc",
+            paddingX: 2,
+            bgcolor: "grey.200",
+            minHeight: "64px",
+          }}
+        >
+          <Typography variant="h6" fontWeight="bold">
+            {selectedUser ? selectedUser.name : "Select a user"}
+          </Typography>
+        </Toolbar>
+
+        {/* Chat Messages */}
+        <Box
+          id="chatArea"
+          sx={{
+            flex: 1,
+            overflowY: "auto",
+            p: 2,
+            bgcolor: "grey.100",
+            borderRadius: "8px",
+            marginTop: 1,
+            height: "calc(100vh - 220px)",
+          }}
+        >
+          {messages.length === 0 ? (
+            <Typography variant="body2" color="textSecondary">
+              No messages yet.
+            </Typography>
+          ) : (
+            messages.map((msg, index) => (
+              <Box
+                key={index}
+                sx={{
+                  display: "flex",
+                  justifyContent: msg.sender_id === user.id ? "flex-end" : "flex-start",
+                  mb: 1.5,
+                }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+                <Paper
+                  elevation={3}
+                  sx={{
+                    p: 2,
+                    maxWidth: "70%",
+                    borderRadius: 2,
+                    bgcolor: msg.sender_id === user.id ? "primary.main" : "background.paper",
+                    color: msg.sender_id === user.id ? "#fff" : "text.primary",
+                  }}
+                >
+                  <Typography variant="body1">{msg.message}</Typography>
+                </Paper>
+              </Box>
+            ))
+          )}
+        </Box>
+
+        {/* Message Input */}
+        <Box
+          sx={{
+            display: "flex",
+            p: 2,
+            borderTop: "1px solid #ccc",
+            alignItems: "center",
+            bgcolor: "grey.200",
+          }}
+        >
+          <TextField
+            variant="outlined"
+            placeholder="Type something here..."
+            fullWidth
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            sx={{
+              mr: 2,
+              bgcolor: "white",
+              borderRadius: 1,
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": {
+                  borderColor: "grey.400",
+                },
+              },
+            }}
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSendMessage}
+            sx={{ height: "100%", bgcolor: "primary.main" }}
+          >
+            Send
+          </Button>
+        </Box>
+      </Box>
+    </Box>
   );
 }

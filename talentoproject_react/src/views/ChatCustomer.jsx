@@ -1,66 +1,120 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import axiosClient from "../axiosClient";
+import {
+  Box,
+  Avatar,
+  Button,
+  TextField,
+  Typography,
+  IconButton,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+} from "@mui/material";
+import ChatIcon from "@mui/icons-material/Chat";
+import CloseIcon from "@mui/icons-material/Close";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useStateContext } from "../context/contextprovider";
+import echo from '../echo'; 
 
 export default function ChatCustomer() {
-  const { user } = useStateContext();
-  const [message, setMessage] = useState("");
-  const [showConversations, setShowConversations] = useState(true);
-  const [messages, setMessages] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
+  const { user } = useStateContext(); // Get the logged-in user from context
+  const [message, setMessage] = useState(""); // The current message input
+  const [messages, setMessages] = useState([]); // All chat messages
+  const [users, setUsers] = useState([]); // List of contacts (performers)
+  const [selectedUser, setSelectedUser] = useState(null); // The selected contact
+  const [isChatOpen, setIsChatOpen] = useState(false); // To toggle chat window
+  const [isContactSelected, setIsContactSelected] = useState(false); // To toggle contact/chat view
 
+  // Fetch users when the component mounts
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.get('http://127.0.0.1:8000/api/users');
-        const filteredUsers = response.data.filter(u => u.role !== 'admin' && u.id !== user.id); // Exclude admins and the current user
+        const response = await axiosClient.get("/users");
+        const filteredUsers = response.data.filter(
+          (u) => u.role === "performer" && u.id !== user.id // Only include performers, exclude the logged-in user
+        );
         setUsers(filteredUsers);
       } catch (error) {
-        console.error('Error fetching users:', error);
+        console.error("Error fetching users:", error);
       }
     };
-
     fetchUsers();
   }, [user.id]);
 
+  // Fetch messages for the selected user
   useEffect(() => {
     const fetchMessages = async () => {
       if (selectedUser) {
         try {
-          const response = await axios.get('http://127.0.0.1:8000/api/chats', {
-            params: { user_id: selectedUser.id }
+          const response = await axiosClient.get("/chats", {
+            params: {
+              user_id: user.id,         // Logged-in user ID
+              contact_id: selectedUser.id, // Selected contact ID
+            },
           });
-          setMessages(response.data);
+          setMessages(response.data); // Update messages for the selected user
+
+          // Listen for new messages via Pusher
+          echo.channel('chat-channel')
+            .listen('.message.sent', (e) => {
+              const newMessage = e.chat;
+
+              // Prevent duplicate messages by checking the real message ID
+              setMessages((prevMessages) => {
+                if (!prevMessages.some((msg) => msg.id === newMessage.id)) {
+                  return [...prevMessages, newMessage];
+                }
+                return prevMessages;
+              });
+            });
+
+          return () => {
+            echo.leaveChannel('chat-channel');
+          };
         } catch (error) {
-          console.error('Error fetching messages:', error);
+          console.error("Error fetching messages:", error);
         }
       }
     };
 
     fetchMessages();
-  }, [selectedUser]);
+  }, [selectedUser, user.id]); // Fetch messages whenever selectedUser changes
 
+  // Function to handle sending a message
   const handleSendMessage = async () => {
     if (message.trim() !== "" && selectedUser) {
-      const newMessage = { sender_id: user.id, receiver_id: selectedUser.id, message };
-      setMessages([...messages, newMessage]);
-      setMessage("");
-
       try {
-        const response = await axios.post('http://127.0.0.1:8000/api/chats', newMessage);
-        setMessages([...messages, response.data]); 
+        // Send the message to the server
+        await axiosClient.post("/chats", {
+          sender_id: user.id,
+          receiver_id: selectedUser.id,
+          message,
+        });
+
+        // Clear the message input
+        setMessage("");
+        // NOTE: Do not add the message to the UI here because Pusher will handle it
       } catch (error) {
-        console.error('Error sending message:', error);
+        console.error("Error sending message:", error);
       }
     }
   };
 
+  // Function to handle user selection
   const handleUserClick = (user) => {
-    setSelectedUser(user);
-    setMessages([]);
+    setMessages([]); // Clear previous messages immediately
+    setSelectedUser(user); // Set the new user
+    setIsContactSelected(true); // Mark a contact as selected
   };
 
+  // Function to handle going back to the contact list
+  const handleBackToContacts = () => {
+    setIsContactSelected(false); // Go back to the contacts list
+  };
+
+  // Scroll chat to bottom when new messages appear
   useEffect(() => {
     const chatArea = document.getElementById("chatArea");
     if (chatArea) {
@@ -69,66 +123,156 @@ export default function ChatCustomer() {
   }, [messages]);
 
   return (
-    <div className="flex flex-col h-screen">
-      <header className="bg-blue-300 shadow w-full">
-        <div className="flex justify-center items-center px-4 py-6 sm:px-6 lg:px-8">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-            CHAT
-          </h1>
-        </div>
-      </header>
-      
-      <div className="flex-1 flex overflow-hidden">
-        <div className={`w-64 bg-white border-r ${showConversations ? 'block' : 'hidden'} md:block`}>
-          <div className="p-4">
-            <h2 className="text-xl font-semibold mb-2">Active Conversations</h2>
-            <input type="text" placeholder="Search..." className="w-full p-2 border rounded" />
-            <ul>
-              {users.map((user) => (
-                <li key={user.id} onClick={() => handleUserClick(user)} className="flex items-center p-4 hover:bg-gray-100 cursor-pointer">
-                  <img src={`https://i.pravatar.cc/40?img=${user.id}`} alt={user.name} className="w-10 h-10 rounded-full mr-3" />
-                  <div>
-                    <p className="font-semibold">{user.name}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+    <div>
+      {/* Floating Button for Chat */}
+      <IconButton
+        onClick={() => setIsChatOpen((prev) => !prev)}
+        sx={{
+          position: "fixed",
+          bottom: 16,
+          right: 16,
+          bgcolor: "blue",
+          color: "white",
+          boxShadow: "0px 0px 10px rgba(0,0,0,0.3)",
+          "&:hover": {
+            bgcolor: "darkblue",
+          },
+        }}
+      >
+        <ChatIcon />
+      </IconButton>
 
-        <div className="flex-1 flex flex-col">
-          <div id="chatArea" className="flex-1 overflow-y-auto p-4 bg-gray-100">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`p-3 rounded-lg mb-2 max-w-xs ${msg.sender_id === user.id ? "bg-blue-100 ml-auto" : "bg-white"}`}
-              >
-                {msg.message}
+      {/* Chat Component Inside the Modal */}
+      {isChatOpen && (
+        <Box
+          sx={{
+            position: "fixed",
+            bottom: 70,
+            right: 16,
+            width: isContactSelected ? "600px" : "300px",
+            height: "500px",
+            bgcolor: "white",
+            boxShadow: 24,
+            borderRadius: "10px",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* Chat Header */}
+          <Box
+            sx={{
+              p: 2,
+              bgcolor: "blue",
+              color: "white",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              borderRadius: "10px 10px 0 0",
+            }}
+          >
+            {isContactSelected ? (
+              <>
+                <IconButton onClick={handleBackToContacts} sx={{ color: "white" }}>
+                  <ArrowBackIcon />
+                </IconButton>
+                <Typography variant="h6">{selectedUser.name}</Typography>
+              </>
+            ) : (
+              <Typography variant="h6">Contacts</Typography>
+            )}
+            <IconButton sx={{ color: "white" }} onClick={() => setIsChatOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          {/* Contact List or Chat */}
+          <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
+            {!isContactSelected ? (
+              <List>
+                {users.map((user) => (
+                  <ListItem key={user.id} button onClick={() => handleUserClick(user)}>
+                    <ListItemAvatar>
+                      <Avatar>{user.name[0]}</Avatar>
+                    </ListItemAvatar>
+                    <ListItemText primary={user.name} />
+                  </ListItem>
+                ))}
+              </List>
+            ) : (
+              <div id="chatArea">
+                {messages.length === 0 ? (
+                  <Typography color="textSecondary">No messages yet.</Typography>
+                ) : (
+                  messages.map((msg, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        mb: 2,
+                        justifyContent:
+                          msg.sender_id === user.id ? "flex-end" : "flex-start", // Align based on who sent the message
+                      }}
+                    >
+                      {msg.sender_id !== user.id && (
+                        <Avatar sx={{ mr: 1 }}>
+                          {selectedUser.name[0]} {/* Display receiver's avatar */}
+                        </Avatar>
+                      )}
+                      <Box
+                        sx={{
+                          p: 3,
+                          borderRadius: "8px",
+                          maxWidth: "70%",
+                          backgroundColor:
+                            msg.sender_id === user.id ? "#e0f7fa" : "#f1f1f1", // Different colors for sent and received messages
+                        }}
+                      >
+                        {/* Show selected user's name if they're the sender */}
+                        {msg.sender_id !== user.id && (
+                          <Typography variant="body2" fontWeight="bold">
+                            {selectedUser.name}
+                          </Typography>
+                        )}
+                        <Typography variant="body1">{msg.message}</Typography>
+                      </Box>
+                    </Box>
+                  ))
+                )}
               </div>
-            ))}
-          </div>
+            )}
+          </Box>
 
-          <div className="bg-white border-t p-4">
-            <div className="flex items-center">
-              <input
-                type="text"
-                placeholder="Type something here"
-                className="flex-1 p-2 border rounded-l-lg"
+          {/* Message Input */}
+          {isContactSelected && (
+            <Box
+              sx={{
+                borderTop: "1px solid #ccc",
+                display: "flex",
+                p: 2,
+                bgcolor: "white",
+              }}
+            >
+              <TextField
+                variant="outlined"
+                fullWidth
+                placeholder="Type something here..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
+                sx={{ flex: 1 }}
               />
-              <button
-                className="bg-blue-500 text-white p-2 rounded-r-lg"
+              <Button
                 onClick={handleSendMessage}
+                variant="contained"
+                color="primary"
+                sx={{ ml: 1 }}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+                Send
+              </Button>
+            </Box>
+          )}
+        </Box>
+      )}
     </div>
   );
 }

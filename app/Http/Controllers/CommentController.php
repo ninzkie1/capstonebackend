@@ -26,11 +26,7 @@ public function store(Request $request, $postId) {
     ]);
 
     return response()->json($comment, 201);
-}
-
-
-
-    
+}    
 
     public function index($postId)
     {

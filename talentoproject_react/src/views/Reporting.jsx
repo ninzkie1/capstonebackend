@@ -46,7 +46,7 @@ export default function PerformerBooking() {
   };
 
   return (
-    <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-[20rem]' : 'ml-0'}`}>
+    <div className="container mx-auto p-6">
       <header className="bg-gray-800 shadow w-full">
         <div className="flex justify-center items-center px-4 py-6 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold tracking-tight text-white">
@@ -67,7 +67,7 @@ export default function PerformerBooking() {
             <p className="text-gray-600">4.15% Increase Since Last Month</p>
           </div>
           <div className="bg-white shadow rounded-lg p-6">
-            <h2 className="text-2xl font-semibold text-gray-800">Performer Join Requests</h2>
+            <h2 className="text-2xl font-semibold text-gray-800">New Users</h2>
             <p className="text-gray-600 text-4xl">12</p>
             <p className="text-gray-600">+5 Today</p>
           </div>

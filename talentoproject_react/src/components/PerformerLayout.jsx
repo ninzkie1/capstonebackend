@@ -1,116 +1,241 @@
 import React, { useState, useEffect } from "react";
 import Logo from "../assets/logotalentos.png";
-import { Navigate, Outlet, useNavigate } from "react-router-dom";
+import { Navigate, Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
-  Card,
+  Box,
   Typography,
   List,
   ListItem,
-  ListItemPrefix,
-} from "@material-tailwind/react";
+  ListItemIcon,
+  IconButton,
+  Toolbar,
+  AppBar,
+  Avatar,
+  useMediaQuery,
+  Drawer,
+} from "@mui/material";
 import {
-  PresentationChartBarIcon,
-  BriefcaseIcon,
-  UserCircleIcon,
-  InboxIcon,
-  PowerIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from "@heroicons/react/24/solid";
+  Menu as MenuIcon,
+  ChevronLeft as ChevronLeftIcon,
+  Logout as PowerIcon,
+  Campaign as CampaignIcon,
+  AccountBalanceWallet as WalletIcon,
+  Chat as ChatBubbleIcon,
+  AccountCircle as UserCircleIcon,
+  Dashboard as DashboardIcon,
+} from "@mui/icons-material";
+import { useTheme } from "@mui/material/styles";
+import axiosClient from "../axiosClient";
 import { useStateContext } from "../context/contextprovider";
 
 export default function PerformerLayout() {
   const { user, token, setToken, setUser } = useStateContext();
   const navigate = useNavigate();
+  const location = useLocation();
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [message, setMessage] = useState("");
+  const [performer, setPerformer] = useState(null);
+
+  const getPageTitle = () => {
+    switch (location.pathname) {
+      case "/post":
+        return "Urgent Hiring";
+      case "/portfolio":
+        return "Portfolio";
+      case "/chat":
+        return "Messages";
+      case "/booking":
+        return "Dashboard";
+      case "/performer-wallet":
+        return "Performer Wallet";
+      default:
+        return "Performer Dashboard";
+    }
+  };
 
   useEffect(() => {
     if (user) {
-      setMessage(`Welcome ${user.role} ${user.name}!`);
-    } else {
-      setMessage("Welcome Guest!");
+      fetchPerformerData();
     }
   }, [user]);
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+  const fetchPerformerData = () => {
+    if (user) {
+      axiosClient
+        .get(`/performers/${user.id}/portfolio`)
+        .then((response) => setPerformer(response.data))
+        .catch((error) => console.error("Error fetching performer data:", error));
+    }
   };
+
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   const onLogout = (ev) => {
     ev.preventDefault();
     setToken(null);
     setUser(null);
+    localStorage.removeItem("USER_DATA");
   };
 
- 
-
-  const navigateToPortfolio = () => {
-    navigate("/portfolio");
-  };
-  const navigateToMessages = () => {
-    navigate("/chat");
-  };
-
-  const navigateToBookings = () => {
-    navigate("/booking");
-  };
+  const navigateTo = (route) => navigate(route);
 
   if (!token) {
-    return <Navigate to='/login' />;
+    return <Navigate to="/login" />;
   }
 
+  const SidebarContent = () => (
+    <>
+      <Box sx={{ display: "flex", alignItems: "center", p: 2 }}>
+        <Avatar
+          src={
+            performer?.user?.image_profile
+              ? `http://192.168.254.116:8000/storage/${performer.user.image_profile}`
+              : Logo
+          }
+          alt="Profile Image"
+          sx={{
+            width: 70,
+            height: 70,
+            marginRight: 2,
+            border: "2px solid #fff",
+          }}
+        />
+        <Box sx={{ color: "white" }}>
+          <Typography variant="h6" fontWeight="bold" sx={{ lineHeight: "1.2rem" }}>
+            Welcome
+          </Typography>
+          {user && (
+            <>
+              <Typography sx={{ fontSize: "1rem" }}>{user.role}</Typography>
+              <Typography sx={{ fontSize: "1rem" }}>{user.name}</Typography>
+            </>
+          )}
+        </Box>
+        {isSmallScreen && (
+          <IconButton onClick={toggleSidebar} sx={{ color: "white", ml: "auto" }}>
+            <ChevronLeftIcon />
+          </IconButton>
+        )}
+      </Box>
+
+      <List sx={{ p: 2 }}>
+        {[
+          { text: "Urgent Hiring", icon: <CampaignIcon />, route: "/post" },
+          { text: "Portfolio", icon: <UserCircleIcon />, route: "/portfolio" },
+          { text: "Messages", icon: <ChatBubbleIcon />, route: "/chat" },
+          { text: "Dashboard", icon: <DashboardIcon />, route: "/booking" },
+          { text: "Wallet", icon: <WalletIcon />, route: "/performer-wallet" },
+          { text: "Log Out", icon: <PowerIcon />, action: onLogout },
+        ].map((item, index) => (
+          <ListItem
+            button
+            key={index}
+            onClick={item.route ? () => navigateTo(item.route) : item.action}
+            sx={{
+              paddingY: 3,
+              paddingX: 2.5,
+              "&:hover": {
+                backgroundColor: theme.palette.action.hover,
+              },
+              borderRadius: "4px",
+              marginBottom: "2px",
+              transition: "background-color 0.3s ease",
+            }}
+          >
+            <ListItemIcon
+              sx={{
+                color: "white",
+                minWidth: "32px",
+                "& > *": {
+                  fontSize: "1.2rem",
+                },
+              }}
+            >
+              {item.icon}
+            </ListItemIcon>
+            <Typography
+              variant="body1"
+              sx={{ color: "white", fontWeight: "bold", fontSize: "0.9rem" }}
+            >
+              {item.text}
+            </Typography>
+          </ListItem>
+        ))}
+      </List>
+    </>
+  );
+
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar */}
-      <Card className={`h-screen w-[20rem] p-4 shadow-xl shadow-blue-gray-900/5 bg-gray-600 fixed transition-all duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-[calc(100%-2rem)]'}`}>
-        {/* Toggle button */}
-        <button
-          className="absolute top-1/2 -right-4 bg-gray-600 p-2 rounded-r-md text-white transform -translate-y-1/2" // Updated color to grey
-          onClick={toggleSidebar}
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      {/* AppBar for top navigation with gradient background */}
+      <AppBar
+        position="fixed"
+        sx={{
+          backgroundImage: "linear-gradient(to right, #D97706, #F59E0B)",
+        }}
+      >
+        <Toolbar sx={{ display: "flex", justifyContent: "space-between" }}>
+          <IconButton edge="start" color="inherit" onClick={toggleSidebar}>
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" component="div" sx={{ flexGrow: 1, textAlign: "center" }}>
+            {getPageTitle()}
+          </Typography>
+        </Toolbar>
+      </AppBar>
+
+      {/* Sidebar with gradient background */}
+      {isSmallScreen ? (
+        <Drawer
+          anchor="left"
+          open={isSidebarOpen}
+          onClose={toggleSidebar}
+          sx={{
+            "& .MuiDrawer-paper": {
+              backgroundImage: "linear-gradient(to right, #D97706, #F59E0B)",
+              color: "#fff",
+              width: 250,
+            },
+          }}
         >
-          {isSidebarOpen ? <ChevronLeftIcon className="h-5 w-5" /> : <ChevronRightIcon className="h-5 w-5" />}
-        </button>
+          <SidebarContent />
+        </Drawer>
+      ) : (
+        <Box
+          sx={{
+            width: isSidebarOpen ? 250 : 0,
+            transition: "width 0.3s ease",
+            overflow: "hidden",
+            backgroundImage: "linear-gradient(to right, #D97706, #F59E0B)",
+            color: "#fff",
+            position: "fixed",
+            top: 0,
+            left: 0,
+            height: "100vh",
+            paddingTop: "64px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+          }}
+        >
+          <SidebarContent />
+        </Box>
+      )}
 
-        <div className="flex items-center mb-2 p-3">
-          <img src={Logo} alt="Talento Logo" className="h-20 w-auto mr-2" /> 
-          <h1 className="text-xl font-bold tracking-tight text-gray-900">
-            {message}
-          </h1>
-        </div>
-        <List>
-          <ListItem className="p-3 hover:bg-yellow-700" onClick={navigateToPortfolio}>
-            <ListItemPrefix>
-              <UserCircleIcon className="h-5 w-5 text-white" />
-            </ListItemPrefix>
-            <Typography color="white">Portfolio</Typography>
-          </ListItem>
-          <ListItem className="p-3 hover:bg-yellow-700" onClick={navigateToMessages}>
-            <ListItemPrefix>
-              <InboxIcon className="h-5 w-5 text-white" />
-            </ListItemPrefix>
-            <Typography color="white">Messages</Typography>
-          </ListItem>
-          
-          <ListItem className="p-3 hover:bg-yellow-700" onClick={navigateToBookings}>
-            <ListItemPrefix>
-              <BriefcaseIcon className="h-5 w-5 text-white" />
-            </ListItemPrefix>
-            <Typography color="white">Bookings</Typography>
-          </ListItem>
-          <ListItem onClick={onLogout} className="p-3 hover:bg-yellow-700">
-            <ListItemPrefix>
-              <PowerIcon className="h-5 w-5 text-white" />
-            </ListItemPrefix>
-            <Typography color="white">Log Out</Typography>
-          </ListItem>
-        </List>
-      </Card>
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col">
-        <Outlet context={{ isSidebarOpen }} />
-      </div>
-    </div>
+      {/* Main Content Area */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          marginLeft: isSidebarOpen && !isSmallScreen ? "250px" : 0,
+          transition: "margin-left 0.3s ease",
+          padding: 3,
+        }}
+      >
+        <Toolbar />
+        <Outlet context={{ isSidebarOpen, fetchPerformerData }} />
+      </Box>
+    </Box>
   );
 }

@@ -42,18 +42,18 @@ export default function Users() {
 
   const handleEditUser = async (user) => {
     try {
-      const response = await axiosClient.get(`/users/${user.id}`);
+      const response = await axiosClient.get(`/users/${user.id}`); // Fixed the backticks here
       if (response.data) {
         setEditingUser(response.data);
         setFormData({
           name: response.data.name,
           lastname: response.data.lastname,
           email: response.data.email,
-          password: response.data.password || "",
+          password: "", // Optional, keeping it empty by default
           role: response.data.role,
         });
         setValidationErrors({});
-        setIsModalOpen(true);
+        setIsModalOpen(true);  // Open the edit modal
       }
     } catch (error) {
       setError(error.message || "Failed to fetch user details");
@@ -65,14 +65,14 @@ export default function Users() {
     try {
       const updatedData = { ...formData };
       if (!updatedData.password) {
-        delete updatedData.password;
+        delete updatedData.password;  // If password is not set, omit it
       }
-      const response = await axiosClient.put(`/users/${editingUser.id}`, updatedData);
+      const response = await axiosClient.put(`/users/${editingUser.id}`, updatedData);  // Fixed the backticks here
       if (response.data.message) {
         fetchUsers();
         setEditingUser(null);
         setIsModalOpen(false);
-        toast.success("User updated successfully"); // Success toast notification
+        toast.success("User updated successfully");
       }
     } catch (error) {
       if (error.response && error.response.data.errors) {
@@ -85,10 +85,10 @@ export default function Users() {
 
   const handleDeleteUser = async () => {
     try {
-      const response = await axiosClient.delete(`/users/${userToDelete.id}`);
+      const response = await axiosClient.delete(`/users/${userToDelete.id}`);  // Fixed the backticks here
       if (response.data.message) {
         fetchUsers();
-        toast.success("User deleted successfully"); // Success toast notification
+        toast.success("User deleted successfully");
         setIsDeleteModalOpen(false);
         setUserToDelete(null);
       }
@@ -121,8 +121,12 @@ export default function Users() {
     setValidationErrors({});
   };
 
+  // Filter users by their roles
+  const performers = users.filter(user => user.role === "performer");
+  const clients = users.filter(user => user.role === "client" || user.role === "customer");
+
   return (
-    <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-[20rem]' : 'ml-5'}`}>
+    <div className="container mx-auto p-6">
       <ToastContainer />
       <header className="bg-gray-800 shadow w-full">
         <div className="flex justify-center items-center px-4 py-6 sm:px-6 lg:px-8">
@@ -135,36 +139,93 @@ export default function Users() {
         <div className="px-4 py-6 sm:px-6 lg:px-8">
           {error ? (
             <p className="text-red-500">Error: {error}</p>
-          ) : users.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {users.map((user) => (
-                <div key={user.id} className="border border-gray-300 p-4 rounded-lg shadow-sm">
-                  <p className="text-lg font-semibold">{user.name} {user.lastname}</p>
-                  <p className="text-sm text-gray-600">{user.email}</p>
-                  <p className="text-sm text-gray-600">Role: {user.role}</p>
-                  <div className="flex space-x-2 mt-2">
-                    <button 
-                      className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-                      onClick={() => handleEditUser(user)}
-                    >
-                      Edit
-                    </button>
-                    <button 
-                      className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
-                      onClick={() => openDeleteModal(user)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
           ) : (
-            <p>No users found.</p>
+            <>
+              {/* Performers Table */}
+              <h2 className="text-xl font-bold mb-4 text-gray-700">Performers</h2>
+              {performers.length > 0 ? (
+                <table className="min-w-full table-auto border-collapse border border-gray-300 mb-8">
+                  <thead className="bg-gray-200">
+                    <tr>
+                      <th className="border px-6 py-3 text-left font-medium text-gray-600 w-1/4">Name</th>
+                      <th className="border px-6 py-3 text-left font-medium text-gray-600 w-1/4">Email</th>
+                      <th className="border px-6 py-3 text-left font-medium text-gray-600 w-1/4">Role</th>
+                      <th className="border px-6 py-3 text-center font-medium text-gray-600 w-1/4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white">
+                    {performers.map((user) => (
+                      <tr key={user.id} className="border-b">
+                        <td className="border px-6 py-4">{user.name} {user.lastname}</td>
+                        <td className="border px-6 py-4">{user.email}</td>
+                        <td className="border px-6 py-4">{user.role}</td>
+                        <td className="border px-6 py-4 text-center">
+                          <button 
+                            className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600 mr-2"
+                            onClick={() => handleEditUser(user)}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600"
+                            onClick={() => openDeleteModal(user)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p>No performers found.</p>
+              )}
+
+              {/* Clients Table */}
+              <h2 className="text-xl font-bold mb-4 text-gray-700">Clients</h2>
+              {clients.length > 0 ? (
+                <table className="min-w-full table-auto border-collapse border border-gray-300">
+                  <thead className="bg-gray-200">
+                    <tr>
+                      <th className="border px-6 py-3 text-left font-medium text-gray-600 w-1/4">Name</th>
+                      <th className="border px-6 py-3 text-left font-medium text-gray-600 w-1/4">Email</th>
+                      <th className="border px-6 py-3 text-left font-medium text-gray-600 w-1/4">Role</th>
+                      <th className="border px-6 py-3 text-center font-medium text-gray-600 w-1/4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white">
+                    {clients.map((user) => (
+                      <tr key={user.id} className="border-b">
+                        <td className="border px-6 py-4">{user.name} {user.lastname}</td>
+                        <td className="border px-6 py-4">{user.email}</td>
+                        <td className="border px-6 py-4">{user.role}</td>
+                        <td className="border px-6 py-4 text-center">
+                          <button 
+                            className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600 mr-2"
+                            onClick={() => handleEditUser(user)}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="bg-red-500 text-white px-4 py-1 rounded hover:bg-red-600"
+                            onClick={() => openDeleteModal(user)}
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p>No clients found.</p>
+              )}
+            </>
           )}
         </div>
       </main>
 
+      {/* Modals for Edit and Delete */}
       {isModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
           <div className="bg-white p-6 rounded shadow-lg max-w-md w-full">

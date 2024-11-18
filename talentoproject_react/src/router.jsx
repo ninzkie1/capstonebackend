@@ -17,10 +17,26 @@ import HomePage from './views/HomePage';
 import CustomerProfile from './views/CustomerProfile';
 import ChatCustomer from './views/ChatCustomer';
 import Payment from './views/Payment';
-import Category from './views/Category';
+
 
 // Assume you get the role from the user's context or state
 import { useStateContext } from './context/contextprovider';
+import Post from './views/Post';
+import ClientPost from './views/ClientPost';
+import ForgotPassword from './views/ForgotPassword';
+import AdminPost from './views/AdminPost';
+
+import ManageBooking from './views/ManageBooking';
+import Applicants from './views/Applicants';
+import Walletclient from './views/Walletclient';
+import Dashboard from './views/Dashboard';
+import ViewPortfolio from './views/ViewPortfolio';
+import AdminCoins from './views/AdminCoins';
+import WalletPerformer from './views/WalletPerformer';
+import Notification from './views/Notification';
+import UserNotification from './views/UserNotification';
+import Bookingdesign from './views/Bookingdesign';
+import PendingPerformer from './views/PendingPerformer';
 
 // Role-based redirect component
 function RoleBasedRedirect() {
@@ -28,7 +44,7 @@ function RoleBasedRedirect() {
 
   if (!user) {
     // If no user, redirect to login
-    return <Navigate to="/login" />;
+    return <Navigate to="/home" />;
   }
 
   // Redirect based on the user's role
@@ -65,25 +81,49 @@ const router = createBrowserRouter([
         path: 'chat',
         element: <Messages />
       },
+      {
+        path: 'post',
+        element : <Post/>
+      },
+      {
+        path: 'booking',
+        element : <Booking/>
+      },
+      {
+        path: 'bookingd',
+        element : <Bookingdesign/>
+      },
+      {
+        path: 'passwordchange',
+        element : <ForgotPassword/>
+      },
+      {
+        path: 'performer-wallet',
+        element : <WalletPerformer/>
+      }
     ]
   },
 
   // Customer routes
   {
-    path: '/customer',
+    path: '/',
     element: <CustomerLayout />,
     children: [
       {
-        path: '',
+        path: 'customer',
         element: <Customer />
+      },
+      {
+        path: 'Dashboard',
+        element: <Dashboard />
       },
       {
         path: 'addBook',
         element: <AddBook />
       },
       {
-        path:'profile',
-        element: <CustomerProfile/>
+        path: 'portfolio/:portfolioId',
+        element: <ViewPortfolio/>
       },
       {
         path:'Chats',
@@ -94,15 +134,31 @@ const router = createBrowserRouter([
         element: <Payment/>
       },
       {
-        path: 'category',
-        element : <Category/>
+        path: 'applicants',
+        element : <Applicants/>
+      },
+      {
+        path: 'posts',
+        element : <ClientPost/>
+      },
+      {
+        path: 'password-change',
+        element : <ForgotPassword/>
+      },
+      {
+        path:'customer-profile',
+        element: <CustomerProfile/>
+      },
+      {
+        path: 'Wallet',
+        element: <Walletclient/>
       }
     ]
   },
 
   // Admin routes
   {
-    path: '/admin',
+    path: '',
     element: <AdminLayout />,
     children: [
       {
@@ -114,13 +170,30 @@ const router = createBrowserRouter([
         element: <Users />
       },
       {
-        path: 'booking',
-        element: <Booking />
-      },
-      {
         path: 'performers',
         element: <ManagePerformer />
       },
+       {
+        path: 'ManagePost',
+        element : <AdminPost/>
+      },
+      {
+        path: 'ManageBooking',
+        element : <ManageBooking/>
+      },
+      
+      {
+        path: 'CoinRequest',
+        element: <AdminCoins/>
+      },
+      {
+        path: 'Notification',
+        element: <Notification/>
+      },
+      {
+        path: 'PendingPerformers',
+        element: <PendingPerformer/>
+      }
     ]
   },
 
@@ -130,13 +203,25 @@ const router = createBrowserRouter([
     element: <GuestLayout />,
     children: [
       {
+        path: 'Home',
+        element: <HomePage/>
+      },
+      {
         path: 'register',
         element: <Register />
       },
       {
         path: 'login',
         element: <Login />
-      }
+      },
+      {
+        path: 'forgotpw',
+        element : <ForgotPassword/>
+      },
+     {
+      path: 'Notify',
+      element: <UserNotification/>
+     }
     ]
   },
 ]);

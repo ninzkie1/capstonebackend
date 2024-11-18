@@ -8,7 +8,11 @@ class Event extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'event_name',
-    ];
+    protected $fillable = ['name'];
+
+    
+    public function themes()
+    {
+        return $this->hasMany(Theme::class);
+    }
 }

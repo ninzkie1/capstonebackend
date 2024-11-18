@@ -1,31 +1,42 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useRef, useState, useEffect } from 'react';
+import axiosClient from '../axiosClient';
 import Logo from "../assets/logotalentos.png";
 import Footer from '../components/Footer';
-import { useStateContext } from "../context/contextprovider"; 
+import { useStateContext } from "../context/contextprovider";
+import Rating from '@mui/material/Rating';
+import { VolumeUp, VolumeOff } from '@mui/icons-material';
+import profile from '../assets/Ilk.jpg';
 
 export default function HomePage() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedPerformer, setSelectedPerformer] = useState(null);
+    const [performers, setPerformers] = useState([]);
+    const [isMuted, setIsMuted] = useState([]);
     const aboutUsRef = useRef(null);
     const featuredPerformerRef = useRef(null);
-    const { user } = useStateContext(); 
+    const highlightsRef = useRef(null);
+    const { user } = useStateContext();
     const navigate = useNavigate();
 
-    const performers = [
-        { name: 'Kris Justin Oporto', role: 'Singer', location: 'Guizo, Mandaue', rating: 4.5, reviews: 16, image: 'path/to/kris-justin-oporto-image.png' },
-        { name: 'John Clifford Tumulak', role: 'Dancer', location: 'Basak, Lapu-lapu', rating: 4.8, reviews: 46, image: 'path/to/john-clifford-tumulak-image.png' },
-        { name: 'Niño Rey Garbo', role: 'Singer', location: 'Yati, Liloan', rating: 4.6, reviews: 35, image: 'path/to/nino-rey-garbo-image.png' },
-        { name: 'Ian Jeoffrey Casul', role: 'Comedian', location: 'Unahan CCLEX, Cordova', rating: 3.0, reviews: 5, image: 'path/to/ian-jeoffrey-casul-image.png' }
-    ];
-
     useEffect(() => {
+        axiosClient.get('http://192.168.254.116:8000/api/performer')
+            .then((response) => {
+                setPerformers(response.data);
+                setIsMuted(response.data.map(() => true));
+            })
+            .catch((error) => {
+                console.error('Error fetching performers:', error);
+            });
+
         if (user) {
             if (user.role === 'admin') {
-                navigate('/users');
+                navigate('/managepost');
             } else if (user.role === 'customer') {
                 navigate('/customer');
             } else if (user.role === 'performer') {
-                navigate('/performer');
+                navigate('/post');
             }
         }
     }, [user, navigate]);
@@ -34,120 +45,176 @@ export default function HomePage() {
         ref.current.scrollIntoView({ behavior: 'smooth' });
     };
 
+    const handleSeeDetails = (performer) => {
+        setSelectedPerformer(performer);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setSelectedPerformer(null);
+    };
+
+    const handleSeePortfolio = () => {
+        navigate('/login');
+    };
+
+    const toggleMute = (index) => {
+        setIsMuted((prevMuted) => {
+            const newMutedState = [...prevMuted];
+            newMutedState[index] = !newMutedState[index];
+            return newMutedState;
+        });
+    };
+
     return (
         <div className="flex flex-col min-h-screen">
-            <nav className="bg-gray-800 text-white">
-                <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8">
-                    <div className="relative flex h-16 items-center justify-between">
-                        <div className="flex-1 flex items-center justify-between sm:items-stretch sm:justify-start">
-                            <div className="flex items-center">
-                                <img 
-                                    src={Logo} 
-                                    alt="Talento Logo" 
-                                    className="h-10 w-auto mr-2" 
-                                />
-                                <h1 className="text-xl font-bold sm:text-2xl">Talento</h1>
-                            </div>
-
-                            <div className="flex items-center sm:hidden">
-                                <button
-                                    onClick={() => setIsMenuOpen(!isMenuOpen)}
-                                    type="button"
-                                    className="inline-flex items-center justify-center p-2 text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
-                                >
-                                    <span className="sr-only">Open main menu</span>
-                                    <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <div className="hidden sm:flex sm:ml-6">
-                                <div className="flex space-x-4">
-                                    <Link
-                                        to="/login"
-                                        className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-                                    >
-                                        Login
-                                    </Link>
-                                    <Link
-                                        to="/register"
-                                        className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-                                    >
-                                        Register
-                                    </Link>
-                                    <button
-                                        onClick={() => scrollToSection(aboutUsRef)}
-                                        className="text-gray-300 hover:bg-gray-700 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-                                    >
-                                        About Us
-                                    </button>
-                                </div>
-                            </div>
+            <nav className="sticky top-0 bg-yellow-700 text-white shadow-md z-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="relative flex items-center justify-between h-16">
+                        <div className="flex items-center">
+                            <img
+                                src={Logo}
+                                alt="Talento Logo"
+                                className="h-10 w-auto mr-2"
+                            />
+                            <h1 className="text-xl font-bold sm:text-2xl">Talento</h1>
+                        </div>
+                        <div className="hidden sm:flex sm:items-center space-x-6 ml-auto">
+                            <Link
+                                to="/login"
+                                className="hover:text-indigo-400 transition-colors duration-300 font-medium"
+                            >
+                                Login
+                            </Link>
+                            <button
+                                onClick={() => scrollToSection(aboutUsRef)}
+                                className="hover:text-indigo-400 transition-colors duration-300 font-medium"
+                            >
+                                About Us
+                            </button>
+                        </div>
+                        <div className="sm:hidden flex items-center">
+                            <button
+                                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                                type="button"
+                                className="inline-flex items-center justify-center p-2 rounded-md text-gray-200 hover:text-white hover:bg-yellow-800"
+                            >
+                                <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </div>
-
-                <div className={`sm:hidden ${isMenuOpen ? 'block' : 'hidden'}`}>
-                    <div className="px-2 pt-2 pb-3 space-y-1">
+                {isMenuOpen && (
+                    <div className="sm:hidden bg-yellow-600">
                         <Link
                             to="/login"
-                            className="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+                            className="block px-4 py-2 hover:bg-yellow-700 text-white"
                         >
                             Login
-                        </Link>
-                        <Link
-                            to="/register"
-                            className="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
-                        >
-                            Register
                         </Link>
                         <button
                             onClick={() => {
                                 setIsMenuOpen(false);
                                 scrollToSection(aboutUsRef);
                             }}
-                            className="text-gray-300 hover:bg-gray-700 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+                            className="block px-4 py-2 hover:bg-yellow-700 text-white"
                         >
                             About Us
                         </button>
                     </div>
-                </div>
+                )}
             </nav>
 
-            <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 bg-gray-100">
-                <div className="text-center mb-12">
-                    <h2 className="text-3xl font-bold sm:text-4xl text-gray-900 mb-4">Welcome to Talento</h2>
-                    <p className="text-base sm:text-lg text-gray-600 mb-6">
+            <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 bg-yellow-700 relative overflow-hidden" style={{ backgroundImage: "url('/confetti.png')", backgroundRepeat: "no-repeat", backgroundPosition: "center", backgroundSize: "cover" }}>
+                <div className="absolute inset-0 bg-black opacity-50"></div>
+                <div className="text-center mb-12 z-10">
+                    <h2 className="text-4xl font-extrabold text-white mb-4 animate-bounce">
+                        Welcome to Talento
+                    </h2>
+                    <p className="text-lg text-gray-200 mb-6">
                         Discover and book talented performers for your events. Browse through our selection of artists and find the perfect fit for your next occasion.
                     </p>
                     <Link
                         to="/register"
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-md text-lg font-semibold hover:bg-indigo-500"
+                        className="bg-gradient-to-r from-yellow-500 to-yellow-700 text-white px-6 py-3 rounded-full text-lg font-semibold hover:scale-105 transition-transform duration-300 shadow-lg"
                     >
                         Get Started
                     </Link>
                 </div>
 
-                <section ref={featuredPerformerRef} className="w-full bg-white py-16 px-4">
+                {/* Highlights Section */}
+                <section ref={highlightsRef} className="w-full bg-yellow-600 py-16 px-4">
                     <div className="max-w-7xl mx-auto text-center">
-                        <h3 className="text-2xl font-semibold sm:text-3xl text-gray-900 mb-4">Featured Performers</h3>
-                        <p className="text-base sm:text-lg text-gray-600 mb-6">
-                            Meet our top performers and see why they are the best choice for your events. Browse their profiles and find the perfect talent for your occasion.
+                        <h3 className="text-3xl font-semibold text-white mb-4">Highlights</h3>
+                        <p className="text-lg text-gray-200 mb-6">
+                            Discover the best moments from our top talents and watch them in action.
                         </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {performers.map((performer, index) => (
-                                <div 
-                                    key={index} 
-                                    className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-md transition-transform transform hover:scale-105"
+                                performer.performer_portfolio?.highlights?.length > 0 && (
+                                    <div key={index} className="relative group overflow-hidden rounded-lg shadow-lg">
+                                        <video
+                                            className="w-full h-48 object-cover group-hover:scale-110 group-hover:opacity-80 transition-transform duration-500"
+                                            src={`http://192.168.254.116:8000/storage/${performer.performer_portfolio.highlights[0].highlight_video}`}
+                                            autoPlay
+                                            loop
+                                            muted={isMuted[index]}
+                                            playsInline
+                                        />
+                                        <button
+                                            className="absolute bottom-4 right-4 bg-black bg-opacity-50 rounded-full p-2 text-white"
+                                            onClick={() => toggleMute(index)}
+                                        >
+                                            {isMuted[index] ? <VolumeOff /> : <VolumeUp />}
+                                        </button>
+                                    </div>
+                                )
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Featured Performers Section */}
+                <section ref={featuredPerformerRef} className="w-full bg-yellow-700 py-16 px-4">
+                    <div className="max-w-7xl mx-auto text-center">
+                        <h3 className="text-3xl font-semibold text-white mb-4">
+                            Featured Performers
+                        </h3>
+                        <p className="text-lg text-gray-200 mb-6">
+                            Meet our top performers and see why they are the best choice for your events.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {performers.map((performer, index) => (
+                                <div
+                                    key={index}
+                                    className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-md transition-transform transform hover:scale-105 hover:shadow-xl"
                                 >
-                                    <img src={performer.image} alt={performer.name} className="w-full h-32 object-cover" />
+                                    <img
+                                        src={performer.image_profile ? `http://192.168.254.116:8000/storage/${performer.image_profile}` : profile}
+                                        alt={performer.name}
+                                        className="w-full h-40 object-cover"
+                                    />
                                     <div className="p-4">
-                                        <h3 className="text-lg font-semibold">{performer.name}</h3>
-                                        <p>{performer.role}</p>
-                                        <p>{performer.location}</p>
-                                        <p>{'★'.repeat(Math.floor(performer.rating))}{'☆'.repeat(5 - Math.floor(performer.rating))} ({performer.reviews} Reviews)</p>
-                                        <button className="mt-2 p-2 bg-blue-500 text-white rounded-md">See Details</button>
+                                        <h3 className="text-lg font-semibold mb-2 text-yellow-700">{performer.name}</h3>
+                                        <p className="text-gray-600 font-semibold"><label>Talent:</label> {performer.performer_portfolio?.talent_name}</p>
+                                        <p className="text-gray-600 font-semibold"><label>Location:</label> {performer.performer_portfolio?.location}</p>
+                                        <div className="flex items-center mt-2">
+                                            <span className="mr-2 font-semibold text-yellow-700">Rating:</span> 
+                                            <Rating
+                                                value={performer.performer_portfolio?.average_rating || 4.0}
+                                                precision={0.5}
+                                                readOnly
+                                            />
+                                        </div>
+                                        <button
+                                            className="mt-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-4 py-2 rounded-full shadow hover:scale-105 transition-transform duration-300"
+                                            onClick={() => handleSeeDetails(performer)}
+                                        >
+                                            See Details
+                                        </button>
                                     </div>
                                 </div>
                             ))}
@@ -155,17 +222,19 @@ export default function HomePage() {
                     </div>
                 </section>
 
-                <section ref={aboutUsRef} className="w-full bg-gray-200 py-16 px-4">
+                {/* About Us Section */}
+                <section ref={aboutUsRef} className="w-full bg-yellow-600 py-16 px-4">
                     <div className="max-w-7xl mx-auto text-center">
-                        <h3 className="text-2xl font-semibold sm:text-3xl text-gray-900 mb-4">About Us</h3>
-                        <p className="text-base sm:text-lg text-gray-600 mb-6">
-                            At Talent Booking, we are dedicated to connecting you with exceptional performers for your events. Our platform offers a wide range of talented artists ready to make your occasion unforgettable.
+                        <h3 className="text-3xl font-semibold text-white mb-4">
+                            About Us
+                        </h3>
+                        <p className="text-lg text-gray-200 mb-6">
+                            At Talent Booking, we connect you with exceptional performers.
                         </p>
                     </div>
                 </section>
             </main>
 
-            <Footer />
         </div>
     );
 }

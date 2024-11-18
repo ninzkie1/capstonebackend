@@ -16,7 +16,7 @@ export default function ManagePerformer() {
     ];
 
     return (
-        <div className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'ml-[20rem]' : 'ml-0'}`}>
+        <div className="container mx-auto p-6">
             <header className="bg-gray-800 shadow w-full">
                 <div className="flex justify-center items-center px-4 py-6 sm:px-6 lg:px-8">
                     <h1 className="text-3xl font-bold tracking-tight text-white">

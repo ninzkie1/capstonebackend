@@ -1,12 +1,14 @@
 import axios from "axios";
 
 const axiosClient = axios.create({
-    baseURL: "http://127.0.0.1:8000/api",
+    baseURL: "http://192.168.254.116:8000/api", // Update with your machine's IP address
 });
 
 axiosClient.interceptors.request.use((config) => {
     const token = localStorage.getItem("ACCESS_TOKEN");
-    config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
 });
 
@@ -15,15 +17,12 @@ axiosClient.interceptors.response.use(
         return response;
     },
     (error) => {
-        try {
-            const { response } = error;
-            if (response.status === 401) {
-                localStorage.removeItem("ACCESS_TOKEN");
-            }
-        } catch (err) {
-            console.error(err);
+        const { response } = error;
+        if (response && response.status === 401) {
+            localStorage.removeItem("ACCESS_TOKEN");
+            // Optionally, redirect to login page
         }
-        throw error;
+        return Promise.reject(error);
     }
 );
 
