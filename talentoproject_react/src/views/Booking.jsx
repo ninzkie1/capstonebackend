@@ -10,6 +10,13 @@ import {
   DialogContent,
   DialogTitle,
   DialogContentText,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Paper,
 } from "@mui/material";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -34,6 +41,7 @@ export default function Booking() {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [transactions, setTransactions] = useState([]);
 
   useEffect(() => {
     const fetchPerformerProfile = async () => {
@@ -130,7 +138,25 @@ export default function Booking() {
 }, [echo]);
 
   
+useEffect(() => {
+  const fetchTransactions = async () => {
+    if (user && user.id) {
+      try {
+        const response = await axios.get(`/performer-trans`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        setTransactions(response.data.data);
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
+        toast.error("Failed to load transactions.");
+      }
+    }
+  };
 
+  fetchTransactions();
+}, [user]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -447,6 +473,60 @@ export default function Booking() {
                     ))}
                 </tbody>
               </table>
+            )}
+          </section>
+
+           {/* Transaction */}
+          <section className="bg-white shadow-md rounded-lg p-4 lg:p-6 mb-6 overflow-x-auto">
+            <h2 className="text-xl font-semibold mb-4">Transactions</h2>
+            {transactions.length === 0 ? (
+              <p>No Transactions Available</p>
+            ) : (
+              <TableContainer component={Paper}>
+                <Table stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Transaction Type</TableCell>
+                      <TableCell>Amount</TableCell>
+                      <TableCell>Date of Booking</TableCell>
+                      <TableCell>Status</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {transactions.map((transaction) => (
+                      <TableRow key={transaction.id}>
+                        <TableCell>{transaction.transaction_type}</TableCell>
+                        <TableCell>₱{parseFloat(transaction.amount).toFixed(2)}</TableCell>
+                        <TableCell>
+                          {dayjs(transaction.start_date).isValid()
+                            ? dayjs(transaction.start_date).format("MMMM D, YYYY")
+                            : "Invalid Date"}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            style={{
+                              backgroundColor:
+                                transaction.status === "PENDING"
+                                  ? "#FBBF24"
+                                  : transaction.status === "APPROVED"
+                                  ? "#22C55E"
+                                  : transaction.status === "DECLINED"
+                                  ? "#EF4444"
+                                  : "#AAAAAA",
+                              color: "white",
+                              padding: "4px 8px",
+                              borderRadius: "8px",
+                              fontSize: "0.8em",
+                            }}
+                          >
+                            {transaction.status}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             )}
           </section>
         </div>

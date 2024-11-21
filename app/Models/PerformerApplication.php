@@ -21,6 +21,8 @@ class PerformerApplication extends Model
         'location',
         'description',
         'status',
+        'id_picture',
+        'holding_id_picture'
     ];
 
     protected $hidden = [

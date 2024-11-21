@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 Use App\Models\PerformerPortfolio;
 Use App\Models\User;
 Use App\Models\Highlight;
+Use Illuminate\Support\Facades\Storage;
 use App\Models\Municipality;
 use App\Models\Theme;
 use Illuminate\Support\Facades\Auth;
@@ -238,10 +239,76 @@ class CustomerController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+    public function updateProfile(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'lastname' => 'required|string|max:255',
+            'image_profile' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+        ]);
     
+        $user = Auth::user();
     
+        $user->name = $request->input('name');
+        $user->lastname = $request->input('lastname');
     
+        if ($request->hasFile('image_profile')) {
+            // Delete old image if it exists
+            if ($user->image_profile) {
+                Storage::disk('public')->delete($user->image_profile);
+            }
+    
+            // Store new image in the 'profiles' directory on the 'public' disk
+            $path = $request->file('image_profile')->store('profiles', 'public');
+            $user->image_profile = $path;
+        }
+    
+        $user->save();
+    
+        // Return the updated user profile including the full URL of the image
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'lastname' => $user->lastname,
+                'image_profile' => $user->image_profile ? asset('storage/' . $user->image_profile) : null,
+            ],
+        ]);
     }
+    
+    public function getLoggedInClient()
+    {
+        try {
+            // Get the authenticated user
+            $user = Auth::user();
+
+            // Check if the user is authenticated
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated.'], 401);
+            }
+
+            // Ensure the logged-in user is a client
+            if ($user->role !== 'client') {
+                return response()->json(['error' => 'Only clients can access this information.'], 403);
+            }
+
+            // Format the response to include image URL
+            $user->image_profile_url = $user->image_profile
+                ? url("storage/" . $user->image_profile)
+                : url("storage/logotalentos.png");
+
+            // Return the user's data
+            return response()->json(['user' => $user], 200);
+        } catch (\Exception $e) {
+            Log::error("Error fetching client information: " . $e->getMessage());
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+}
+    
+    
+    
     
     
     

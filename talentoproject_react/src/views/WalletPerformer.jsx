@@ -66,11 +66,11 @@ export default function WalletPerformer() {
       if (response.status === 200 && response.data.status === "success") {
         setAdminWallet(response.data.wallet);
       } else {
-        alert("Admin Wallet is under Maintenance");
+        // alert("Admin Wallet is under Maintenance");
       }
     } catch (error) {
       console.error("Error fetching admin wallet:", error);
-      alert("Admin Wallet is under Maintenance.");
+      // alert("Admin Wallet is under Maintenance.");
     } finally {
       setLoadingAdminWallet(false);
     }

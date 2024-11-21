@@ -6,24 +6,17 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('password_reset_tokens', function (Blueprint $table) {
-            $table->string('email')->primary();
-            $table->string('token');
-            $table->timestamp('created_at')->nullable();
-
-
-            $table->foreign('email')->references('email')->on('users')->onDelete('cascade');
+            $table->id(); // Primary key
+            $table->string('email'); // Email field
+            $table->string('token'); // Token in plaintext
+            $table->timestamp('created_at')->nullable(); // Creation time
+            $table->index('email'); // Index for email
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('password_reset_tokens');

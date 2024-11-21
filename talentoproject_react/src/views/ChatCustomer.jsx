@@ -11,6 +11,8 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import ChatIcon from "@mui/icons-material/Chat";
 import CloseIcon from "@mui/icons-material/Close";
@@ -19,6 +21,10 @@ import { useStateContext } from "../context/contextprovider";
 import echo from '../echo'; 
 
 export default function ChatCustomer() {
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMediumScreen = useMediaQuery(theme.breakpoints.down("md"));
+
   const { user } = useStateContext(); // Get the logged-in user from context
   const [message, setMessage] = useState(""); // The current message input
   const [messages, setMessages] = useState([]); // All chat messages
@@ -26,6 +32,7 @@ export default function ChatCustomer() {
   const [selectedUser, setSelectedUser] = useState(null); // The selected contact
   const [isChatOpen, setIsChatOpen] = useState(false); // To toggle chat window
   const [isContactSelected, setIsContactSelected] = useState(false); // To toggle contact/chat view
+  const [isSending, setIsSending] = useState(false); // To indicate message is being sent
 
   // Fetch users when the component mounts
   useEffect(() => {
@@ -50,7 +57,7 @@ export default function ChatCustomer() {
         try {
           const response = await axiosClient.get("/chats", {
             params: {
-              user_id: user.id,         // Logged-in user ID
+              user_id: user.id, // Logged-in user ID
               contact_id: selectedUser.id, // Selected contact ID
             },
           });
@@ -85,6 +92,7 @@ export default function ChatCustomer() {
   // Function to handle sending a message
   const handleSendMessage = async () => {
     if (message.trim() !== "" && selectedUser) {
+      setIsSending(true); // Set isSending to true to indicate the message is being sent
       try {
         // Send the message to the server
         await axiosClient.post("/chats", {
@@ -95,9 +103,10 @@ export default function ChatCustomer() {
 
         // Clear the message input
         setMessage("");
-        // NOTE: Do not add the message to the UI here because Pusher will handle it
+        setIsSending(false); // Set isSending back to false after message is sent
       } catch (error) {
         console.error("Error sending message:", error);
+        setIsSending(false); // Set isSending back to false in case of error
       }
     }
   };
@@ -149,13 +158,19 @@ export default function ChatCustomer() {
             position: "fixed",
             bottom: 70,
             right: 16,
-            width: isContactSelected ? "600px" : "300px",
-            height: "500px",
+            width: isSmallScreen
+              ? "90%"
+              : isMediumScreen
+              ? "70%"
+              : "400px",
+            height: isSmallScreen ? "70vh" : "500px",
             bgcolor: "white",
             boxShadow: 24,
             borderRadius: "10px",
             display: "flex",
             flexDirection: "column",
+            overflow: "hidden",
+            transition: "width 0.3s ease",
           }}
         >
           {/* Chat Header */}
@@ -175,7 +190,9 @@ export default function ChatCustomer() {
                 <IconButton onClick={handleBackToContacts} sx={{ color: "white" }}>
                   <ArrowBackIcon />
                 </IconButton>
-                <Typography variant="h6">{selectedUser.name}</Typography>
+                <Typography variant="h6" noWrap>
+                  {selectedUser.name}
+                </Typography>
               </>
             ) : (
               <Typography variant="h6">Contacts</Typography>
@@ -199,7 +216,7 @@ export default function ChatCustomer() {
                 ))}
               </List>
             ) : (
-              <div id="chatArea">
+              <div id="chatArea" style={{ maxHeight: "100%", overflowY: "auto" }}>
                 {messages.length === 0 ? (
                   <Typography color="textSecondary">No messages yet.</Typography>
                 ) : (
@@ -221,19 +238,13 @@ export default function ChatCustomer() {
                       )}
                       <Box
                         sx={{
-                          p: 3,
+                          p: 2,
                           borderRadius: "8px",
                           maxWidth: "70%",
                           backgroundColor:
                             msg.sender_id === user.id ? "#e0f7fa" : "#f1f1f1", // Different colors for sent and received messages
                         }}
                       >
-                        {/* Show selected user's name if they're the sender */}
-                        {msg.sender_id !== user.id && (
-                          <Typography variant="body2" fontWeight="bold">
-                            {selectedUser.name}
-                          </Typography>
-                        )}
                         <Typography variant="body1">{msg.message}</Typography>
                       </Box>
                     </Box>
@@ -260,14 +271,16 @@ export default function ChatCustomer() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 sx={{ flex: 1 }}
+                disabled={isSending} // Disable input while sending message
               />
               <Button
                 onClick={handleSendMessage}
                 variant="contained"
                 color="primary"
                 sx={{ ml: 1 }}
+                disabled={isSending} // Disable button while sending message
               >
-                Send
+                {isSending ? "Sending..." : "Send"}
               </Button>
             </Box>
           )}

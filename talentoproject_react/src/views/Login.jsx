@@ -10,6 +10,7 @@ export default function Login() {
     const { setUser, setToken } = useStateContext();
     const navigate = useNavigate();
     const [error, setError] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
     const [successMessage, setSuccessMessage] = useState(null); 
 
     const handleSubmit = (ev) => {
@@ -19,16 +20,20 @@ export default function Login() {
             email: emailRef.current.value,
             password: passwordRef.current.value,
         };
-
+        setIsLoading(true);
         axiosClient.post("/login", payload)
             .then(({ data }) => {
                 setUser(data.user);
                 setToken(data.token);
+                setTimeout(() => {
+                    setIsLoading(false); 
+                    navigate(role === "performer" ? "/" : "/");
+                }, 3000);
                 console.log("Login success");
 
                 // Reset success message when login is successful
                 setSuccessMessage(null);
-
+                setIsLoading(false); 
                 if (data.user.role === 'admin') {
                     navigate('/managepost');
                 } else if (data.user.role === 'client') {
@@ -43,15 +48,30 @@ export default function Login() {
                     setError(`Error: ${response.data.message}`);
                 } else {
                     setError(`Error: ${err.message}`);
+                    
                 }
+                setIsLoading(false); 
             });
     };
     const handlePasswordResetSuccess = () => {
         setSuccessMessage("Password has been reset successfully!");
     };
+    
 
     return (
         <>
+        {isLoading && (
+                <div className="fixed inset-0 flex items-center justify-center z-50 bg-transparent">
+                    <img
+                        src={logo}
+                        alt="Loading..."
+                        className="w-16 h-16 animate-bounce"
+                    />
+                    <p className="text-orange-500 text-xl font-bold animate-pulse">
+                                Loging in...
+                    </p>
+                </div>
+            )}
             <div className="min-h-screen flex items-center justify-center bg-yellow-700 relative overflow-hidden" 
                 style={{ backgroundImage: "url('/confetti.png')", 
                 backgroundRepeat: "no-repeat", 

@@ -100,43 +100,48 @@ export default function ViewPortfolio() {
     }
 
     return (
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex flex-col h-full bg-gray-100">
             <ToastContainer />
-            <main className="flex-1 p-6">
-                <header className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold">Portfolio</h1>
+            <main className="flex-1 p-4 sm:p-6 w-full max-w-5xl mx-auto">
+                <header className="flex flex-col md:flex-row justify-between items-center mb-4 md:mb-6">
+                    <h1 className="text-2xl md:text-3xl font-bold">Portfolio</h1>
                 </header>
 
                 <section>
                     <div className="bg-white shadow rounded-lg overflow-hidden">
                         <div className="relative">
-                            <img src={profilePlaceholder} alt="Cover Photo" className="w-full h-48 object-cover" />
-                            <div className="absolute bottom-0 left-6 transform translate-y-1/2">
+                            <img
+                                src={profilePlaceholder}
+                                alt="Cover Photo"
+                                className="w-full h-40 md:h-48 object-cover"
+                            />
+                            <div className="absolute bottom-0 left-4 md:left-6 transform translate-y-1/2">
                                 <img
-                                    src={performer.user?.image_profile
+                                    src={
+                                        performer.user?.image_profile
                                             ? `http://192.168.254.116:8000/storage/${performer.user.image_profile}`
                                             : profilePlaceholder
                                     }
                                     alt="Profile Photo"
-                                    width={100}
-                                    height={100}
-                                    className="rounded-full border-4 border-white"
+                                    width={80}
+                                    height={80}
+                                    className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-white"
                                 />
                             </div>
                         </div>
 
-                        <div className="p-6">
-                            <div className="flex items-center justify-between">
+                        <div className="p-4 md:p-6">
+                            <div className="flex flex-col md:flex-row items-start justify-between">
                                 <div>
-                                    <h2 className="text-2xl font-bold mt-10">
+                                    <h2 className="text-xl md:text-2xl font-bold mt-8">
                                         {performer.user?.name || "Performer Name Not Available"}
                                     </h2>
                                     <p className="text-sm text-gray-500">{performer.talent_name}</p>
                                 </div>
                             </div>
 
-                            <div className="mt-6 border-t border-b border-gray-200">
-                                <nav className="flex space-x-4 text-center">
+                            <div className="mt-4 md:mt-6 border-t border-b border-gray-200">
+                                <nav className="flex overflow-x-auto space-x-4 text-center">
                                     <button
                                         onClick={() => setActiveTab("overview")}
                                         className={`py-4 text-gray-700 font-semibold ${
@@ -170,25 +175,27 @@ export default function ViewPortfolio() {
                                 </nav>
                             </div>
 
-                            <div className="mt-6">
+                            <div className="mt-4 md:mt-6">
                                 {activeTab === "overview" && (
                                     <div>
                                         <h3 className="font-semibold text-lg">
                                             About {performer.user?.name || "Performer"}
                                         </h3>
                                         <p className="text-gray-600">{performer.description}</p>
-                                        <p className="text-sm text-gray-500">Location: {performer.location}</p>
-                                        <p className="text-sm text-gray-500">
-                                            Email: {performer.user?.email || "Email Not Available"}
-                                        </p>
-                                        <p className="text-sm text-gray-500">
-                                            Phone: {performer.phone || "Phone Not Available"}
-                                        </p>
-                                        <p className="text-sm text-gray-500">Experience: {performer.experience} years</p>
-                                        <p className="text-sm text-gray-500">Genres: {performer.genres}</p>
-                                        <p className="text-sm text-gray-500">Type of Performer: {performer.performer_type}</p>
+                                        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 mt-4">
+                                            <p className="text-sm text-gray-500">Location: {performer.location}</p>
+                                            <p className="text-sm text-gray-500">
+                                                Email: {performer.user?.email || "Email Not Available"}
+                                            </p>
+                                            <p className="text-sm text-gray-500">
+                                                Phone: {performer.phone || "Phone Not Available"}
+                                            </p>
+                                            <p className="text-sm text-gray-500">Experience: {performer.experience} years</p>
+                                            <p className="text-sm text-gray-500">Genres: {performer.genres}</p>
+                                            <p className="text-sm text-gray-500">Type of Performer: {performer.performer_type}</p>
+                                        </div>
 
-                                        <div className="flex items-center mt-2">
+                                        <div className="flex items-center mt-2 md:mt-4">
                                             <Rating
                                                 value={Number(performer?.average_rating) || 0}
                                                 readOnly
@@ -204,39 +211,41 @@ export default function ViewPortfolio() {
                                 )}
 
                                 {activeTab === "reviews" && (
-                                    <div>
-                                        {feedback.length > 0 ? (
-                                            feedback.map((review) => (
-                                                <div key={review.id} className="border-b border-gray-200 py-4">
-                                                    <div className="flex items-center mb-2">
-                                                        <img
-                                                            src={
-                                                                review.user?.image_profile
-                                                                    ? `http://192.168.254.116:8000/storage/${review.user.image_profile}`
-                                                                    : profilePlaceholder
-                                                            }
-                                                            alt="User Profile"
-                                                            className="w-10 h-10 rounded-full"
-                                                        />
-                                                        <div className="ml-4">
-                                                            <p className="font-semibold">
-                                                                {review.user?.name || "User"}{" "}
-                                                                {review.user?.lastname || ""}
-                                                            </p>
-                                                            <Rating
-                                                                value={Number(review.rating)}
-                                                                readOnly
-                                                                precision={0.1}
-                                                                className="text-yellow-500"
+                                    <div className="flex flex-col">
+                                        <div className="max-h-80 overflow-y-auto border p-4 rounded-lg bg-gray-50 mb-6">
+                                            {feedback.length > 0 ? (
+                                                feedback.map((review) => (
+                                                    <div key={review.id} className="border-b border-gray-200 py-4">
+                                                        <div className="flex items-center mb-2">
+                                                            <img
+                                                                src={
+                                                                    review.user?.image_profile
+                                                                        ? `http://192.168.254.116:8000/storage/${review.user.image_profile}`
+                                                                        : profilePlaceholder
+                                                                }
+                                                                alt="User Profile"
+                                                                className="w-10 h-10 rounded-full"
                                                             />
+                                                            <div className="ml-4">
+                                                                <p className="font-semibold">
+                                                                    {review.user?.name || "User"}{" "}
+                                                                    {review.user?.lastname || ""}
+                                                                </p>
+                                                                <Rating
+                                                                    value={Number(review.rating)}
+                                                                    readOnly
+                                                                    precision={0.1}
+                                                                    className="text-yellow-500"
+                                                                />
+                                                            </div>
                                                         </div>
+                                                        <p className="text-gray-600">{review.review}</p>
                                                     </div>
-                                                    <p className="text-gray-600">{review.review}</p>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <p className="text-gray-600">No reviews available.</p>
-                                        )}
+                                                ))
+                                            ) : (
+                                                <p className="text-gray-600">No reviews available.</p>
+                                            )}
+                                        </div>
 
                                         {canLeaveReview && (
                                             <div className="mt-6">
@@ -244,7 +253,9 @@ export default function ViewPortfolio() {
                                                 <Rating
                                                     name="rating"
                                                     value={newFeedback.rating}
-                                                    onChange={(e, newValue) => setNewFeedback({ ...newFeedback, rating: newValue })}
+                                                    onChange={(e, newValue) =>
+                                                        setNewFeedback({ ...newFeedback, rating: newValue })
+                                                    }
                                                 />
                                                 <TextField
                                                     fullWidth
@@ -255,18 +266,40 @@ export default function ViewPortfolio() {
                                                     value={newFeedback.review}
                                                     onChange={handleFeedbackChange}
                                                     variant="outlined"
-                                                    sx={{ mt: 2 }}
+                                                    className="mt-4"
                                                 />
                                                 <Button
                                                     variant="contained"
                                                     color="primary"
-                                                    sx={{ mt: 2 }}
+                                                    className="mt-4"
                                                     onClick={handleFeedbackSubmit}
                                                 >
                                                     Submit Review
                                                 </Button>
                                             </div>
                                         )}
+                                    </div>
+                                )}
+
+                                {activeTab === "media" && (
+                                    <div>
+                                        <h3 className="font-semibold text-lg">Highlights Video</h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                                            {performer.highlights?.length > 0 ? (
+                                                performer.highlights.map((video, index) => (
+                                                    <div key={index} className="relative group overflow-hidden rounded-lg shadow-md">
+                                                        <video className="w-full h-40 object-cover rounded-lg" controls>
+                                                            <source
+                                                                src={`http://192.168.254.116:8000/storage/${video.highlight_video}`}
+                                                                type="video/mp4"
+                                                            />
+                                                        </video>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-gray-600">No videos uploaded yet.</p>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>

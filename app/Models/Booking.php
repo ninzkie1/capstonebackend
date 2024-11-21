@@ -32,5 +32,14 @@ class Booking extends Model
     {
         return $this->belongsTo(User::class, 'client_id');
     }
+    public function performerPortfolio()
+{
+    return $this->belongsTo(PerformerPortfolio::class, 'performer_id');
+}
+    public function transactions()
+{
+    return $this->hasMany(Transaction::class, 'booking_id');
+}
+
     
 }

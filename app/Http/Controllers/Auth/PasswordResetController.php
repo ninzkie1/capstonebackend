@@ -6,32 +6,49 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use App\Models\User;
+use Illuminate\Support\Facades\Notification;
+use App\Notifications\CustomResetPasswordNotification;
 
 class PasswordResetController extends Controller
 {
-    /**
-     * Handle sending a password reset link to the user.
-     */
+    // Send the password reset link email
     public function sendResetLinkEmail(Request $request)
-    {
-        $request->validate(['email' => 'required|email']);
+{
+    $request->validate(['email' => 'required|email']);
 
-        $status = Password::sendResetLink(
-            $request->only('email')
-        );
+    $token = Str::random(64);
 
-        if ($status == Password::RESET_LINK_SENT) {
-            return response()->json(['message' => __($status)]);
-        }
+    // Store the plaintext token in the password_reset_tokens table
+    DB::table('password_reset_tokens')->updateOrInsert(
+        ['email' => $request->email],
+        ['token' => $token, 'created_at' => now()]
+    );
 
-        return response()->json(['message' => __($status)], 400);
+    $user = User::where('email', $request->email)->first();
+
+    if ($user) {
+        // Send the reset link notification
+        Notification::send($user, new CustomResetPasswordNotification($token));
+
+        Log::info('Password reset link generated and email sent', [
+            'email' => $user->email,
+            'url' => url(route('password.reset', [
+                'token' => $token,
+                'email' => $user->email,
+            ], false))
+        ]);
+
+        return response()->json(['message' => 'Password reset link sent.']);
     }
 
-    /**
-     * Handle the actual password reset process.
-     */
+    return response()->json(['message' => 'Failed to send password reset link.'], 400);
+}
+
+    // Reset the user's password
     public function resetPassword(Request $request)
     {
         $request->validate([
@@ -40,19 +57,22 @@ class PasswordResetController extends Controller
             'password' => 'required|min:8|confirmed',
         ]);
 
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function (User $user, string $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password),
-                ])->save();
-            }
-        );
+        $tokenEntry = DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->first();
 
-        if ($status == Password::PASSWORD_RESET) {
-            return response()->json(['message' => __($status)]);
+        if ($tokenEntry && $tokenEntry->token === $request->token) {
+            $user = User::where('email', $request->email)->first();
+            if ($user) {
+                $user->forceFill(['password' => Hash::make($request->password)])->save();
+
+                // Delete the token after successfully resetting the password
+                DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+                return response()->json(['message' => 'Your password has been successfully reset.']);
+            }
         }
 
-        return response()->json(['message' => __($status)], 400);
+        return response()->json(['message' => 'Invalid or expired token. Please request a new reset link.'], 400);
     }
 }

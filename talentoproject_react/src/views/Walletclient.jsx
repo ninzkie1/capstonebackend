@@ -71,7 +71,7 @@ export default function WalletClient() {
       }
     } catch (error) {
       console.error("Error fetching admin wallet:", error);
-      alert("Failed to fetch admin wallet information. Please try again later.");
+      // alert("Failed to fetch admin wallet information. Please try again later.");
     } finally {
       setLoadingAdminWallet(false);
     }

@@ -1,12 +1,11 @@
-import { useRef, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axiosClient from '../axiosClient';
+import { useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import axiosClient from "../axiosClient";
 import { useStateContext } from "../context/contextprovider";
-import Rating from '@mui/material/Rating';
-import { VolumeUp, VolumeOff } from '@mui/icons-material';
-import profile from '../assets/Ilk.jpg';
-import profilebg from '../assets/bg.jpg';
-import ChatCustomer from './ChatCustomer';
+import Rating from "@mui/material/Rating";
+import { VolumeUp, VolumeOff } from "@mui/icons-material";
+import profile from "../assets/Ilk.jpg";
+import ChatCustomer from "./ChatCustomer";
 
 export default function Customer() {
     const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
@@ -17,45 +16,53 @@ export default function Customer() {
     const [events, setEvents] = useState([]);
     const [themes, setThemes] = useState([]);
     const [formData, setFormData] = useState({
-        event_id: '',
-        theme_id: ''
+        event_id: "",
+        theme_id: "",
     });
 
     const { user } = useStateContext();
     const navigate = useNavigate();
     const highlightsRef = useRef(null);
 
-    // Fetch performers and events when component mounts
+    // Fetch performers and events when the component mounts
     useEffect(() => {
-        axiosClient.get('/performervid')
+        axiosClient
+            .get("/performervid")
             .then((response) => {
-                if (response.data.status === 'success') {
-                    const performersData = response.data.data;
-                    const sortedPerformers = performersData.sort(
-                        (a, b) => b.performer_portfolio?.average_rating - a.performer_portfolio?.average_rating
+                if (response.data.status === "success") {
+                    const validPerformers = response.data.data.filter(
+                        (performer) =>
+                            performer.image_profile &&
+                            performer.performer_portfolio?.rate
+                    );
+                    const sortedPerformers = validPerformers.sort(
+                        (a, b) =>
+                            (b.performer_portfolio?.average_rating || 0) -
+                            (a.performer_portfolio?.average_rating || 0)
                     );
                     setPerformers(sortedPerformers);
-                    // Initialize mute state for each performer's highlight video (all muted initially)
-                    setIsMuted(performersData.map(() => true));
+                    setIsMuted(validPerformers.map(() => true));
                 }
             })
             .catch((error) => {
-                console.error('Error fetching performers:', error);
+                console.error("Error fetching performers:", error);
             });
 
-        axiosClient.get('/events')
+        axiosClient
+            .get("/events")
             .then((response) => {
                 setEvents(response.data);
             })
-            .catch((error) => console.error('Error fetching events:', error));
+            .catch((error) => console.error("Error fetching events:", error));
 
+        // Redirect logic based on the user role
         if (user) {
-            if (user.role === 'admin') {
-                navigate('/managepost');
-            } else if (user.role === 'client') {
-                navigate('/customer');
-            } else if (user.role === 'performer') {
-                navigate('/post');
+            if (user.role === "admin") {
+                navigate("/managepost");
+            } else if (user.role === "client") {
+                navigate("/customer");
+            } else if (user.role === "performer") {
+                navigate("/post");
             }
         }
     }, [user, navigate]);
@@ -65,29 +72,33 @@ export default function Customer() {
         navigate(`/portfolio/${performer.performer_portfolio.id}`);
     };
 
+    // Toggle mute state for each video
     const toggleMute = (index) => {
-        setIsMuted((prevMuted) => {
-            const newMutedState = [...prevMuted];
-            newMutedState[index] = !newMutedState[index];
-            return newMutedState;
-        });
+        setIsMuted((prevMuted) =>
+            prevMuted.map((mute, i) => (i === index ? !mute : mute))
+        );
     };
 
+    // Handle book now click to open booking modal
     const handleBookNowClick = () => setIsBookingModalOpen(true);
+
+    // Close booking form
     const handleBookingFormClose = () => setIsBookingModalOpen(false);
 
     // Handle event change and load corresponding themes
     const handleEventChange = (e) => {
         const eventId = e.target.value;
-        setFormData({ ...formData, event_id: eventId, theme_id: '' });
+        setFormData({ ...formData, event_id: eventId, theme_id: "" });
 
-        axiosClient.get(`/events/${eventId}/themes`)
+        axiosClient
+            .get(`/events/${eventId}/themes`)
             .then((response) => {
                 setThemes(response.data);
             })
-            .catch((error) => console.error('Error fetching themes:', error));
+            .catch((error) => console.error("Error fetching themes:", error));
     };
 
+    // Handle theme change in the booking form
     const handleThemeChange = (e) => {
         setFormData({ ...formData, theme_id: e.target.value });
     };
@@ -99,42 +110,40 @@ export default function Customer() {
 
         if (event_id && theme_id) {
             try {
-                await axiosClient
-                    .get('/filter-performers', {
-                        params: {
-                            event_id,
-                            theme_id,
-                        },
-                    })
-                    .then((response) => {
-                        setFilteredPerformers(response.data);
-                        setIsFilteredModalOpen(true);
-                    });
+                const response = await axiosClient.get("/filter-performers", {
+                    params: { event_id, theme_id },
+                });
+                const validFilteredPerformers = response.data.filter(
+                    (performer) =>
+                        performer.image_profile &&
+                        performer.performer_portfolio?.rate
+                );
+                setFilteredPerformers(validFilteredPerformers);
+                setIsFilteredModalOpen(true);
             } catch (error) {
-                console.error('Error fetching filtered performers:', error);
+                console.error("Error fetching filtered performers:", error);
             }
         }
-
         setIsBookingModalOpen(false);
     };
 
+    // Close filtered performers modal
     const handleFilteredModalClose = () => setIsFilteredModalOpen(false);
 
     // Handle booking performer directly from their card
     const handleBookPerformer = (performer) => {
-        // Redirect to the booking page with the selected performer
         navigate("/addBook", {
-            state: {
-                performer,
-                performerId: performer.performer_portfolio.id
-            }
+            state: { performer, performerId: performer.performer_portfolio.id },
         });
     };
 
     return (
         <div className="flex flex-col min-h-screen relative">
             <div className="absolute inset-0 bg-black opacity-50"></div>
-            <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 max-w-7xl mx-auto bg-cover bg-center relative overflow-hidden rounded-lg shadow-md" style={{ backgroundImage: "url('/talent.png')" }}>
+            <main
+                className="flex-1 flex flex-col items-center justify-center px-4 py-12 max-w-7xl mx-auto bg-cover bg-center relative overflow-hidden rounded-lg shadow-md"
+                style={{ backgroundImage: "url('/talent.png')" }}
+            >
                 {/* Hero Section */}
                 <div className="text-center mb-12 z-10">
                     <h2 className="text-4xl font-extrabold text-white mb-4 animate-bounce">
@@ -152,7 +161,7 @@ export default function Customer() {
                 </div>
 
                 {/* Highlights Section */}
-                <section ref={highlightsRef} className="w-full bg-yellow-600 py-16 px-4 z-10">
+               <section ref={highlightsRef} className="w-full bg-yellow-600 py-16 px-4 z-10">
                     <div className="max-w-7xl mx-auto text-center">
                         <h3 className="text-3xl font-semibold text-white mb-4">Performers</h3>
                         <p className="text-lg text-gray-200 mb-6">
@@ -237,10 +246,15 @@ export default function Customer() {
                 {isBookingModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4">
                         <div className="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md">
-                            <h3 className="text-2xl font-semibold mb-4">Book a Performer</h3>
+                            <h3 className="text-2xl font-semibold mb-4">
+                                Book a Performer
+                            </h3>
                             <form onSubmit={handleBookingSubmit}>
                                 <div className="mb-6">
-                                    <label htmlFor="event_name" className="block text-gray-800 font-semibold mb-2">
+                                    <label
+                                        htmlFor="event_name"
+                                        className="block text-gray-800 font-semibold mb-2"
+                                    >
                                         Event Name
                                     </label>
                                     <select
@@ -252,7 +266,7 @@ export default function Customer() {
                                         required
                                     >
                                         <option value="">Select Event</option>
-                                        {events.map(event => (
+                                        {events.map((event) => (
                                             <option key={event.id} value={event.id}>
                                                 {event.name}
                                             </option>
@@ -261,7 +275,10 @@ export default function Customer() {
                                 </div>
 
                                 <div className="mb-6">
-                                    <label htmlFor="theme_name" className="block text-gray-800 font-semibold mb-2">
+                                    <label
+                                        htmlFor="theme_name"
+                                        className="block text-gray-800 font-semibold mb-2"
+                                    >
                                         Theme Name
                                     </label>
                                     <select
@@ -274,7 +291,7 @@ export default function Customer() {
                                         disabled={!formData.event_id}
                                     >
                                         <option value="">Select Theme</option>
-                                        {themes.map(theme => (
+                                        {themes.map((theme) => (
                                             <option key={theme.id} value={theme.id}>
                                                 {theme.name}
                                             </option>
@@ -306,44 +323,70 @@ export default function Customer() {
                 {isFilteredModalOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
                         <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-4xl mx-auto">
-                            <h3 className="text-xl font-semibold mb-4">Available Performers</h3>
+                            <h3 className="text-xl font-semibold mb-4">
+                                Available Performers
+                            </h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {filteredPerformers.length > 0 ? (
                                     filteredPerformers.map((performer, index) => (
-                                        <div key={index} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-md">
+                                        <div
+                                            key={index}
+                                            className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-md"
+                                        >
                                             <img
-                                                src={performer.image_profile ? `http://192.168.254.116:8000/storage/${performer.image_profile}` : profile}
+                                                src={`http://192.168.254.116:8000/storage/${performer.image_profile}`}
                                                 alt={performer.name}
                                                 className="w-full h-40 object-cover"
                                             />
                                             <div className="p-4">
-                                                <h3 className="text-lg font-semibold mb-2">{performer.name}</h3>
+                                                <h3 className="text-lg font-semibold mb-2">
+                                                    {performer.name}
+                                                </h3>
                                                 <p className="text-gray-600 font-semibold">
-                                                    <label>Talent:</label> {performer.performer_portfolio?.talent_name}
+                                                    <label>Talent:</label>{" "}
+                                                    {
+                                                        performer.performer_portfolio
+                                                            ?.talent_name
+                                                    }
                                                 </p>
                                                 <p className="text-gray-600 font-semibold">
-                                                    <label>Rate per Booking:</label> {performer.performer_portfolio?.rate} TCoins
+                                                    <label>Rate per Booking:</label>{" "}
+                                                    {performer.performer_portfolio?.rate}{" "}
+                                                    TCoins
                                                 </p>
                                                 <p className="text-gray-600 font-semibold">
-                                                    <label>Location:</label> {performer.performer_portfolio?.location}
+                                                    <label>Location:</label>{" "}
+                                                    {
+                                                        performer.performer_portfolio
+                                                            ?.location
+                                                    }
                                                 </p>
                                                 <div className="flex items-center mt-2">
-                                                    <span className="mr-2 font-semibold">Rating:</span>
+                                                    <span className="mr-2 font-semibold">
+                                                        Rating:
+                                                    </span>
                                                     <Rating
-                                                        value={performer.performer_portfolio?.average_rating || 0.0}
+                                                        value={
+                                                            performer.performer_portfolio
+                                                                ?.average_rating || 0.0
+                                                        }
                                                         precision={0.5}
                                                         readOnly
                                                     />
                                                 </div>
                                                 <button
                                                     className="mt-4 bg-blue-500 text-white px-4 py-2 rounded-md shadow hover:bg-blue-400 transition-colors duration-300 w-full"
-                                                    onClick={() => handleSeeDetails(performer)}
+                                                    onClick={() =>
+                                                        handleSeeDetails(performer)
+                                                    }
                                                 >
                                                     See Details
                                                 </button>
                                                 <button
                                                     className="mt-4 ml-0 bg-green-500 text-white px-4 py-2 rounded-md shadow hover:bg-green-400 transition-colors duration-300 w-full"
-                                                    onClick={() => handleBookPerformer(performer)}
+                                                    onClick={() =>
+                                                        handleBookPerformer(performer)
+                                                    }
                                                 >
                                                     Book
                                                 </button>
@@ -351,7 +394,9 @@ export default function Customer() {
                                         </div>
                                     ))
                                 ) : (
-                                    <p className="text-center text-gray-600">No performers available for the selected event and theme.</p>
+                                    <p className="text-center text-gray-600">
+                                        No performers available for the selected event and theme.
+                                    </p>
                                 )}
                             </div>
                             <div className="flex justify-end mt-4">
@@ -365,8 +410,10 @@ export default function Customer() {
                         </div>
                     </div>
                 )}
-                <ChatCustomer />
             </main>
+            <div className="fixed bottom-6 right-6 z-50">
+                <ChatCustomer />
+            </div>
         </div>
     );
 }

@@ -13,18 +13,19 @@ return new class extends Migration
     {
         Schema::create('performer_applications', function (Blueprint $table) {
             $table->id(); // Primary key
-            $table->unsignedBigInteger('user_id'); // Reference to user (applicant)
+            $table->unsignedBigInteger('user_id')->nullable(); // Nullable until the performer is approved
             $table->string('name');
             $table->string('lastname');
-            $table->string('email')->unique();
-            $table->string('password'); // Will be encrypted later
-            $table->string('talent_name');
-            $table->string('location');
-            $table->text('description')->nullable(); // Optional description for the application
-            $table->string('status')->default('PENDING'); // Status of the application ('PENDING', 'APPROVED', 'REJECTED')
+            $table->string('email')->unique(); // Email of the applicant
+            $table->string('talent_name'); // Performer’s talent name
+            $table->string('location'); // Performer’s location
+            $table->text('description')->nullable(); // Optional description
+            $table->string('id_picture')->nullable(); // Path to ID picture
+            $table->string('holding_id_picture')->nullable(); // Path to holding ID picture
+            $table->string('status')->default('PENDING'); // 'PENDING', 'APPROVED', or 'REJECTED'
             $table->timestamps(); // created_at and updated_at
 
-            // Setting up foreign key constraint
+            // Foreign key constraint for user_id
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState,Navigate } from 'react';
 import echo from "../echo";
 import { useLocation, useNavigate } from 'react-router-dom';
 import axiosClient from '../axiosClient';
@@ -237,6 +237,8 @@ export default function AddBook() {
     }
   };
 
+  
+
   return (
     <div className="container mx-auto p-6">
       <Box sx={{ maxWidth: 800, mx: 'auto', mt: 4 }}>
@@ -245,7 +247,7 @@ export default function AddBook() {
             <Avatar
               src={
                 performer?.image_profile
-                  ? `http://192.168.208.120:8000/storage/${performer.image_profile}`
+                  ? `http://192.168.254.116:8000/storage/${performer.image_profile}`
                   : ''
               }
               alt={performer?.name || ''}

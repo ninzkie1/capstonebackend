@@ -242,23 +242,29 @@ export default function Portfolio() {
     }
 
     return (
-        <div className="container mx-auto p-6">
+        <div className="container mx-auto p-4 md:p-6">
             <ToastContainer />
-            <main className="flex-1 p-6 bg-gradient-to-r from-yellow-200 to-yellow-500 rounded-lg shadow-lg">
-                <header className="flex justify-between items-center mb-6">
-                    <h1 className="text-3xl font-bold text-gray-800">Portfolio</h1>
+            <main className="flex-1 p-4 bg-gradient-to-r from-yellow-200 to-yellow-500 rounded-lg shadow-lg">
+                <header className="flex flex-col md:flex-row justify-between items-center mb-4 md:mb-6">
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Portfolio</h1>
                 </header>
-
+    
                 <section>
                     <div className="bg-white shadow-lg rounded-lg overflow-hidden">
                         <div className="relative">
-                            <img src={profilePlaceholder} alt="Cover Photo" className="w-full h-56 object-cover" />
-                            <div className="absolute bottom-0 left-6 transform translate-y-1/2">
+                            <img
+                                src={profilePlaceholder}
+                                alt="Cover Photo"
+                                className="w-full h-40 md:h-56 object-cover"
+                            />
+                            <div className="absolute bottom-0 left-4 md:left-6 transform translate-y-1/2">
                                 <Avatar
-                                    src={performer?.user?.image_profile ? `http://192.168.254.116:8000/storage/${performer.user.image_profile}?v=${imageVersion}` : profilePlaceholder}
+                                    src={performer?.user?.image_profile
+                                        ? `http://192.168.254.116:8000/storage/${performer.user.image_profile}?v=${imageVersion}`
+                                        : profilePlaceholder}
                                     alt="Profile"
-                                    sx={{ width: 120, height: 120, border: "4px solid white" }}
-                                    className="shadow-lg"
+                                    sx={{ width: 80, height: 80, border: "4px solid white" }}
+                                    className="shadow-lg md:w-[120px] md:h-[120px]"
                                 />
                                 <button
                                     onClick={() => setImageEditOpen(true)}
@@ -268,24 +274,26 @@ export default function Portfolio() {
                                 </button>
                             </div>
                         </div>
-
-                        <div className="p-6">
-                            <div className="flex items-center justify-between">
+    
+                        <div className="p-4 md:p-6">
+                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
                                 <div>
-                                    <h2 className="text-2xl font-semibold text-gray-800 mt-10">{performer?.user?.name}</h2>
-                                    <p className="text-gray-500">{formData.talent_name}</p>
+                                    <h2 className="text-xl md:text-2xl font-semibold text-gray-800 mt-8 md:mt-10">
+                                        {performer?.user?.name}
+                                    </h2>
+                                    <p className="text-gray-500 text-sm md:text-base">{formData.talent_name}</p>
                                 </div>
                                 <Button
                                     variant="contained"
                                     color="primary"
                                     onClick={() => setEditOpen(true)}
-                                    className="text-white shadow-md"
+                                    className="mt-4 md:mt-0 text-white shadow-md"
                                 >
                                     Edit Profile
                                 </Button>
                             </div>
-
-                            <nav className="flex space-x-4 text-center mt-8 border-t border-b border-gray-200 py-4">
+    
+                            <nav className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4 text-center mt-8 border-t border-b border-gray-200 py-2 md:py-4">
                                 <Button
                                     variant={activeTab === "overview" ? "text" : "outlined"}
                                     color={activeTab === "overview" ? "primary" : "inherit"}
@@ -308,58 +316,95 @@ export default function Portfolio() {
                                     Highlights Video
                                 </Button>
                             </nav>
-
-                            <div className="mt-6">
+    
+                            <div className="mt-4 md:mt-6">
                                 {activeTab === "overview" && (
                                     <div>
-                                        <h3 className="font-semibold text-lg text-gray-700 mb-3">About {performer?.user?.name}</h3>
+                                        <h3 className="font-semibold text-lg md:text-xl text-gray-700 mb-2 md:mb-3">
+                                            About {performer?.user?.name}
+                                        </h3>
                                         <p className="text-gray-600 mb-2">{formData.description}</p>
-                                        <p className="text-gray-500"><strong>Address:</strong> {formData.location}</p>
-                                        <p className="text-gray-500"><strong>Email:</strong> {formData.email}</p>
-                                        <p className="text-gray-500"><strong>Phone:</strong> {formData.phone}</p>
-                                        <p className="text-gray-500"><strong>Rate:</strong> {formData.rate} TALENTO COINS</p>
-                                        <p className="text-gray-500"><strong>Experience:</strong> {formData.experience} years</p>
-                                        <p className="text-gray-500"><strong>Genres:</strong> {formData.genres}</p>
-                                        <p className="text-gray-500"><strong>Type:</strong> {formData.performer_type}</p>
+                                        <p className="text-gray-500">
+                                            <strong>Address:</strong> {formData.location}
+                                        </p>
+                                        <p className="text-gray-500">
+                                            <strong>Email:</strong> {formData.email}
+                                        </p>
+                                        <p className="text-gray-500">
+                                            <strong>Phone:</strong> {formData.phone}
+                                        </p>
+                                        <p className="text-gray-500">
+                                            <strong>Rate:</strong> {formData.rate} TALENTO COINS
+                                        </p>
+                                        <p className="text-gray-500">
+                                            <strong>Experience:</strong> {formData.experience} years
+                                        </p>
+                                        <p className="text-gray-500">
+                                            <strong>Genres:</strong> {formData.genres}
+                                        </p>
+                                        <p className="text-gray-500">
+                                            <strong>Type:</strong> {formData.performer_type}
+                                        </p>
                                         <div className="flex items-center mt-3">
                                             <Rating value={Number(averageRating)} readOnly precision={0.5} />
                                             <span className="ml-2 text-gray-600">({averageRating.toFixed(1)}/5)</span>
                                         </div>
                                     </div>
                                 )}
-
+    
                                 {activeTab === "reviews" && (
                                     <div>
-                                        {reviews.length > 0 ? reviews.map((review) => (
-                                            <div key={review.id} className="border-b border-gray-200 py-4">
-                                                <div className="flex items-center">
-                                                    <Avatar
-                                                        src={review.user.image_profile ? `http://192.168.254.116:8000/storage/${review.user.image_profile}` : profilePlaceholder}
-                                                        alt={review.user.name}
-                                                        sx={{ width: 40, height: 40 }}
-                                                    />
-                                                    <div className="ml-4">
-                                                        <p className="font-semibold text-gray-800">{review.user.name}</p>
-                                                        <Rating value={Number(review.rating)} readOnly precision={0.5} />
+                                        {reviews.length > 0 ? (
+                                            reviews.map((review) => (
+                                                <div key={review.id} className="border-b border-gray-200 py-4">
+                                                    <div className="flex items-start">
+                                                        <Avatar
+                                                            src={
+                                                                review.user.image_profile
+                                                                    ? `http://192.168.254.116:8000/storage/${review.user.image_profile}`
+                                                                    : profilePlaceholder
+                                                            }
+                                                            alt={review.user.name}
+                                                            sx={{ width: 40, height: 40 }}
+                                                        />
+                                                        <div className="ml-4">
+                                                            <p className="font-semibold text-gray-800">{review.user.name}</p>
+                                                            <Rating
+                                                                value={Number(review.rating)}
+                                                                readOnly
+                                                                precision={0.5}
+                                                            />
+                                                        </div>
                                                     </div>
+                                                    <p className="text-gray-600 mt-2">{review.review}</p>
                                                 </div>
-                                                <p className="text-gray-600 mt-2">{review.review}</p>
-                                            </div>
-                                        )) : (
+                                            ))
+                                        ) : (
                                             <p className="text-gray-600">No reviews available.</p>
                                         )}
                                     </div>
                                 )}
-
+    
                                 {activeTab === "media" && (
                                     <div>
-                                        <h3 className="font-semibold text-lg text-gray-700 mb-3">Photos & Videos</h3>
+                                        <h3 className="font-semibold text-lg md:text-xl text-gray-700 mb-2 md:mb-3">
+                                            Photos & Videos
+                                        </h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {performer.highlights?.length > 0 ? (
                                                 performer.highlights.map((video, index) => (
-                                                    <div key={index} className="relative overflow-hidden rounded-lg shadow-lg group">
-                                                        <video className="w-full h-40 object-cover" controls>
-                                                            <source src={`http://192.168.254.116:8000/storage/${video.highlight_video}`} type="video/mp4" />
+                                                    <div
+                                                        key={index}
+                                                        className="relative overflow-hidden rounded-lg shadow-lg group"
+                                                    >
+                                                        <video
+                                                            className="w-full h-40 object-cover"
+                                                            controls
+                                                        >
+                                                            <source
+                                                                src={`http://192.168.254.116:8000/storage/${video.highlight_video}`}
+                                                                type="video/mp4"
+                                                            />
                                                         </video>
                                                         <IconButton
                                                             color="secondary"
@@ -374,7 +419,6 @@ export default function Portfolio() {
                                                 <p className="text-gray-600">No videos uploaded yet.</p>
                                             )}
                                         </div>
-
                                         <Button
                                             onClick={() => setIsUploadModalOpen(true)}
                                             variant="contained"
@@ -390,7 +434,6 @@ export default function Portfolio() {
                     </div>
                 </section>
             </main>
-
             {/* Modals for Video Upload, Edit Profile, Update Image */}
             <Modal open={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)}>
                 <div

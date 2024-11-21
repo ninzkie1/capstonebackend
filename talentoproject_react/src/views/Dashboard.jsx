@@ -17,7 +17,7 @@ import {
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-export default function Transactions() {
+export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
 
   useEffect(() => {

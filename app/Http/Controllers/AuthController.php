@@ -32,50 +32,63 @@ class AuthController extends Controller
     {
         try {
             $validatedData = $request->validated();
-    
-            // Create user account
+
+            // Initialize image paths
+            $idPicturePath = null;
+            $holdingIdPicturePath = null;
+
+            // Store ID picture if uploaded
+            if ($request->hasFile('id_picture')) {
+                $idPicturePath = $request->file('id_picture')->store('performer_id_pictures', 'public');
+            }
+
+            // Store holding ID picture if uploaded
+            if ($request->hasFile('holding_id_picture')) {
+                $holdingIdPicturePath = $request->file('holding_id_picture')->store('performer_holding_id_pictures', 'public');
+            }
+
+            // Performers: Create an application
+            if ($validatedData['role'] === 'performer') {
+                PerformerApplication::create([
+                    'name' => $validatedData['name'],
+                    'lastname' => $validatedData['lastname'],
+                    'email' => $validatedData['email'],
+                    'talent_name' => $validatedData['talent_name'] ?? '', // Optional fields
+                    'location' => $validatedData['location'] ?? '',
+                    'description' => $validatedData['description'] ?? '',
+                    'status' => 'PENDING', // Initial status
+                    'id_picture' => $idPicturePath,
+                    'holding_id_picture' => $holdingIdPicturePath,
+                ]);
+
+                return response()->json(['message' => 'Performer application submitted successfully.'], 201);
+            }
+
+            // Clients: Create a normal user account
             $user = User::create([
                 'name' => $validatedData['name'],
                 'lastname' => $validatedData['lastname'],
                 'email' => $validatedData['email'],
                 'password' => bcrypt($validatedData['password']),
-                'role' => $validatedData['role'], 
+                'role' => $validatedData['role'],
             ]);
-    
-            // If the role is 'performer', create a pending application instead of the portfolio
-            if ($user->role === 'performer') {
-                PerformerApplication::create([
-                    'user_id' => $user->id,
-                    'name' => $validatedData['name'],
-                    'lastname' => $validatedData['lastname'],
-                    'email' => $validatedData['email'],
-                    'password' => bcrypt($validatedData['password']),
-                    'talent_name' => $validatedData['talent_name'] ?? '', // Set as empty if not provided
-                    'location' => $validatedData['location'] ?? '',
-                    'description' => $validatedData['description'] ?? '',
-                    'status' => 'PENDING', // Set application as pending
-                ]);
-            }
-    
-            // Generate an authentication token
+
+            // Generate authentication token
             $token = $user->createToken('main')->plainTextToken;
-    
+
             return response()->json([
                 'user' => $user,
                 'token' => $token
-            ], 201); // HTTP 201 Created
-    
+            ], 201);
         } catch (\Exception $e) {
-            // Log error for debugging
             Log::error('Registration error: ' . $e->getMessage());
-            
+
             return response()->json([
                 'message' => 'Registration failed',
                 'error' => $e->getMessage()
-            ], 500); // HTTP 500 Internal Server Error
+            ], 500);
         }
     }
-    
 
     public function logout(Request $request)
     {

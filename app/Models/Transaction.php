@@ -35,6 +35,7 @@ class Transaction extends Model
         return $this->belongsTo(Booking::class);
     }
     
+    
     public function performer()
     {
         return $this->belongsTo(PerformerPortfolio::class, 'performer_id');

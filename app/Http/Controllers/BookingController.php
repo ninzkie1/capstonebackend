@@ -292,7 +292,7 @@ class BookingController extends Controller
             $rate = $performerPortfolio->rate;
     
             // Update booking status to 'Accepted'
-            $booking->update(['status' => 'Accepted']);
+            $booking->update(['status' => 'ACCEPTED']);
     
             // Log a pending transaction for the performer
             Transaction::create([
@@ -302,7 +302,7 @@ class BookingController extends Controller
                 'amount' => $rate,
                 'balance_before' => $authUser->talento_coin_balance,
                 'balance_after' => $authUser->talento_coin_balance,
-                'status' => 'PENDING', // Pending until admin approval
+                'status' => 'PENDING', // Pending until client
             ]);
     
             DB::commit();
@@ -424,4 +424,78 @@ class BookingController extends Controller
     //         ], 500);
     //     }
     // }
+    public function getAcceptedBookings()
+    {
+        try {
+            // Retrieve bookings that have been accepted
+            $acceptedBookings = Booking::where('status', 'ACCEPTED')
+                ->with(['performer.user', 'client'])  // Eager load the performer and client relationships
+                ->get();
+
+            // Map bookings to include relevant data
+            $acceptedBookings = $acceptedBookings->map(function ($booking) {
+                return [
+                    'id' => $booking->id,
+                    'event_name' => $booking->event_name,
+                    'theme_name' => $booking->theme_name,
+                    'start_date' => $booking->start_date,
+                    'start_time' => $booking->start_time,
+                    'end_time' => $booking->end_time,
+                    'municipality_name' => $booking->municipality_name,
+                    'barangay_name' => $booking->barangay_name,
+                    'status' => $booking->status,
+                    'performer_name' => $booking->performer->user->name ?? 'Unknown Performer',
+                    'client_name' => $booking->client->name ?? 'Unknown Client',
+                    'created_at' => $booking->created_at,
+                ];
+            });
+
+            return response()->json(['status' => 'success', 'data' => $acceptedBookings], 200);
+        } catch (\Exception $e) {
+            Log::error("Accepted Booking Retrieval Error: " . $e->getMessage());
+            return response()->json(['error' => 'There was an error retrieving accepted bookings. Please try again.'], 500);
+        }
+    }
+    public function getAcceptedBookingContacts()
+    {
+        try {
+            // Step 1: Retrieve authenticated user
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated. Please login to proceed.'], 401);
+            }
+    
+            // Step 2: Retrieve performer portfolio IDs linked to accepted bookings by this client
+            $performerPortfolioIds = Booking::where('client_id', $user->id)
+                ->where('status', 'ACCEPTED')
+                ->pluck('performer_id');
+    
+            if ($performerPortfolioIds->isEmpty()) {
+                // If no accepted bookings are found, return empty data
+                return response()->json(['status' => 'success', 'data' => []], 200);
+            }
+    
+            // Step 3: Retrieve the performers (users) based on their IDs in the performer_portfolios table
+            $performerIds = PerformerPortfolio::whereIn('id', $performerPortfolioIds)
+                ->pluck('performer_id');
+    
+            if ($performerIds->isEmpty()) {
+                // If no performers are found, return empty data
+                return response()->json(['status' => 'success', 'data' => []], 200);
+            }
+    
+            // Step 4: Retrieve the user details for those performers
+            $users = User::whereIn('id', $performerIds)->get();
+    
+            // Step 5: Return the data
+            return response()->json(['status' => 'success', 'data' => $users], 200);
+        } catch (\Exception $e) {
+            // Log the exception for debugging
+            Log::error("Error retrieving accepted booking contacts: " . $e->getMessage());
+            return response()->json(['error' => 'Error retrieving accepted booking contacts. Please try again.'], 500);
+        }
+    }
+    
+    
+
 } 

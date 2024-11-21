@@ -21,7 +21,7 @@ use App\Http\Controllers\TCoinController;
 use App\Http\Controllers\UnavailableDateController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WalletController;
-
+use App\Models\Transaction;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -53,6 +53,7 @@ Route::group(['middleware' => ['auth:sanctum', 'admin']], function () {
     Route::get('/performer-applications', [PerformerApplicationController::class, 'index']);
     Route::put('/performer-applications/{id}/approve', [PerformerApplicationController::class, 'approve']);
     Route::put('/performer-applications/{id}/reject', [PerformerApplicationController::class, 'reject']);
+    Route::get('/admin/summary-report', [AdminController::class, 'getSummaryReport']);
 });
 
 
@@ -77,7 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/performers/highlights/{highlightId}', [PerformerController::class, 'deleteHighlightVideo']);
 
     //same raman ni silag function
-    Route::post('/performers/{userId}/store-profile-image', [PerformerController::class, 'storePortfolioImage']);
+    // Route::post('/performers/{userId}/store-profile-image', [PerformerController::class, 'storePortfolioImage']);
     Route::post('performers/{id}/update-portfolio-image', [PerformerController::class, 'updatePortfolioImage']);
     Route::post('/users/{id}', [UserController::class, 'update']);
 
@@ -101,8 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/performer', [PerformerController::class, 'getHighlights']);
 Route::get('/performers', [PerformerController::class, 'getPerformers']);
 
-Route::get('/chats', [ChatController::class, 'index']);
-Route::post('/chats', [ChatController::class, 'store']);
+
 Route::get('/users', [UserController::class, 'index']);
 
 Route::middleware('auth:sanctum')->group(function () {
@@ -126,8 +126,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
 Route::post('/posts/{post}/comments', [CommentController::class, 'store']);
-Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
-Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
+
 
 //deposit
 Route::middleware('auth:sanctum')->group(function () {
@@ -148,8 +147,25 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/bookings/{id}/decline', [BookingController::class, 'declineBooking']);
     Route::post('/bookPerformer', [BookingController::class, 'bookPerformer']);
     Route::get('/transactions', [TransactionController::class, 'index']); // Fetch all transactions
+    Route::get('/performer-trans', [TransactionController::class, 'getPerformerTransactions']);
     Route::get('/transactions/{id}', [TransactionController::class, 'show']); // Fetch a specific transaction by ID
     Route::post('/transactions', [TransactionController::class, 'store']); // Create a new transaction
     Route::put('/transactions/{id}/approve', [TransactionController::class, 'approveTransaction']);//approve the transaction if the user already satisfied and the performer fullfill the clients booking to release the TalentoCoin
     Route::put('/transactions/{id}/decline', [TransactionController::class, 'declineTransaction']);
+    Route::post('/update-profile', [CustomerController::class, 'updateProfile']);
+    Route::get('/client-info', [CustomerController::class, 'getLoggedInClient']);
+    Route::post('/profile', [CustomerController::class, 'showProfile']); 
+    Route::get('/accepted-client', [BookingController::class, 'getAcceptedBookingsForPerformer']);
+    Route::get('/can-chat/{clientId}', [ChatController::class, 'canChat']);
+    Route::get('/canChatClients', [ChatController::class, 'getClientsWithAcceptedBookings']);
+   
+    
 }); 
+Route::get('/chats', [ChatController::class, 'index']);
+Route::post('/chats', [ChatController::class, 'store']);   
+
+Route::middleware(['web'])->group(function () {
+    Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
+    Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
+    
+});

@@ -71,7 +71,7 @@ export default function AdminCoins() {
         setIsEditing(true); // Set isEditing to true if wallet data is present
       }
     } catch (error) {
-      toast.error("Failed to fetch initial data.");
+      // toast.error("Failed to fetch initial data.");
     }
   };
 
@@ -106,8 +106,7 @@ export default function AdminCoins() {
     };
   }, []);
 
-  // Handle Accept Modal (for both deposit and withdrawal)
- // Handle Accept Modal (for both deposit and withdrawal)
+ 
 const handleAccept = (request, type) => {
   setSelectedRequest(request);
   setModalType(type); 

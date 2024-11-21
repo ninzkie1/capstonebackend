@@ -149,36 +149,36 @@ class PerformerController extends Controller
     
 
     // Update performer profile image
-    public function storePortfolioImage(Request $request, $userId)
-    {
-        // Validate the request to ensure an image file is uploaded
-        $validatedData = $request->validate([
-            'image_profile' => 'required|image|mimes:jpg,jpeg,png|max:2048',
-        ]);
+    // public function storePortfolioImage(Request $request, $userId)
+    // {
+    //     // Validate the request to ensure an image file is uploaded
+    //     $validatedData = $request->validate([
+    //         'image_profile' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+    //     ]);
 
-        // Find the user by ID
-        $user = User::find($userId);
-        if (!$user) {
-            return response()->json(['message' => 'User not found'], 404);
-        }
+    //     // Find the user by ID
+    //     $user = User::find($userId);
+    //     if (!$user) {
+    //         return response()->json(['message' => 'User not found'], 404);
+    //     }
 
-        // Find or create the portfolio for the performer
-        $portfolio = PerformerPortfolio::firstOrCreate(['performer_id' => $userId]);
+    //     // Find or create the portfolio for the performer
+    //     $portfolio = PerformerPortfolio::firstOrCreate(['performer_id' => $userId]);
 
-        // Store the new image
-        if ($request->hasFile('image_profile')) {
-            $imagePath = $request->file('image_profile')->store('profile_images', 'public');
-            $portfolio->image_profile = $imagePath;
-            $portfolio->save();
+    //     // Store the new image
+    //     if ($request->hasFile('image_profile')) {
+    //         $imagePath = $request->file('image_profile')->store('profile_images', 'public');
+    //         $portfolio->image_profile = $imagePath;
+    //         $portfolio->save();
 
-            return response()->json([
-                'message' => 'Profile image stored successfully',
-                'image_profile' => asset('storage/' . $portfolio->image_profile),
-            ], 201);
-        }
+    //         return response()->json([
+    //             'message' => 'Profile image stored successfully',
+    //             'image_profile' => asset('storage/' . $portfolio->image_profile),
+    //         ], 201);
+    //     }
 
-        return response()->json(['message' => 'No file uploaded'], 400);
-    }
+    //     return response()->json(['message' => 'No file uploaded'], 400);
+    // }
 
     // Update performer profile image
     public function updatePortfolioImage(Request $request, $userId)

@@ -209,6 +209,75 @@ public function declineTransaction($transactionId)
         return response()->json(['error' => 'An error occurred while declining the transaction. Please try again.'], 500);
     }
 }
+public function getPerformerTransactions()
+{
+    try {
+        // Get the authenticated user
+        $user = Auth::user();
+        
+        // Ensure that the user is authenticated
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated.'], 401);
+        }
+        
+        // Make sure the user is a performer
+        if ($user->role !== 'performer') {
+            return response()->json(['error' => 'Unauthorized access.'], 403);
+        }
+        
+        // Fetch transactions for the authenticated performer
+        $transactions = Transaction::where('user_id', $user->id) // This assumes the user_id represents the performer
+            ->with('booking') // Ensure booking relation is loaded
+            ->get()
+            ->map(function ($transaction) {
+                return [
+                    'id' => $transaction->id,
+                    'performer_name' => $transaction->booking->performer->user->name ?? 'Unknown Performer',
+                    'transaction_type' => $transaction->transaction_type,
+                    'amount' => $transaction->amount,
+                    'start_date' => $transaction->booking->start_date,
+                    'status' => $transaction->status,
+                ];
+            });
 
+        return response()->json(['status' => 'success', 'data' => $transactions], 200);
+    } catch (\Exception $e) {
+        Log::error("Error fetching performer transactions: " . $e->getMessage());
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
+    }
+}
+// public function getClientsWithPendingTransactions()
+// {
+//     try {
+//         $userId = Auth::id(); // Get the authenticated user ID (assumed to be the performer)
+
+//         // Ensure that the authenticated user exists
+//         if (!$userId) {
+//             return response()->json(['error' => 'User not authenticated.'], 401);
+//         }
+
+//         // Find all transactions where the booking's performer matches the logged-in user (performer), and the status is pending
+//         $transactions = Transaction::where('status', 'PENDING')
+//             ->whereHas('booking', function ($query) use ($userId) {
+//                 $query->where('performer_id', $userId);
+//             })
+//             ->get();
+
+//         // Extract unique client IDs from the transactions
+//         $clientIds = $transactions->pluck('booking.client_id')->unique();
+
+//         // Fetch the user details for these clients
+//         $clients = User::whereIn('id', $clientIds)->get();
+
+//         return response()->json(['status' => 'success', 'data' => $clients], 200);
+//     } catch (\Exception $e) {
+//         // Log the exception for debugging
+//         Log::error("Error retrieving clients with pending transactions: " . $e->getMessage());
+//         return response()->json(['error' => 'Error retrieving clients with pending transactions. Please try again.'], 500);
+//     }
+// }
 
 }
+
+
+

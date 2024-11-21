@@ -13,35 +13,60 @@ import {
 import { Edit } from "@mui/icons-material";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useStateContext } from "../context/contextprovider"; // Assuming user state is in context
+import axiosClient from "../axiosClient";
+import profilePlaceholder from "../assets/logotalentos.png"; // Placeholder for profile image
 
 export default function CustomerProfile() {
-  const { user: loggedInUser } = useStateContext(); // Assume logged-in user is fetched from context
   const [user, setUser] = useState(null); // State to hold the user's data
   const [editOpen, setEditOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("posts");
   const [formData, setFormData] = useState({
     name: "",
+    lastname: "",
     location: "",
+    profileImage: null, // File for profile image
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Fetch client data
   useEffect(() => {
-    if (loggedInUser) {
-      // Simulate fetching user data (or fetch from API)
-      setUser({
-        name: loggedInUser.name,
-        profileImage: loggedInUser.profileImage || "src/assets/default.jpg",
-        location: loggedInUser.location || "Unknown Location",
-        friends: loggedInUser.friends || 0,
-        posts: loggedInUser.posts || [], 
-      });
+    const fetchClientData = async () => {
+      try {
+        const response = await axiosClient.get("/client-info", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
 
-      setFormData({
-        name: loggedInUser.name,
-        location: loggedInUser.location,
-      });
-    }
-  }, [loggedInUser]);
+        const client = response.data.user;
+
+        // Update the user state with data from the response
+        setUser({
+          name: client.name,
+          lastname: client.lastname,
+          profileImage: client?.image_profile
+            ? `http://192.168.254.116:8000/storage/${client.image_profile}`
+            : profilePlaceholder,
+          location: client.location || "Unknown Location",
+          friends: client.friends || 0,
+          posts: client.posts || [],
+        });
+
+        // Set form data for editing purposes
+        setFormData({
+          name: client.name,
+          lastname: client.lastname,
+          location: client.location,
+          profileImage: null,
+        });
+      } catch (error) {
+        console.error("Error fetching client data:", error);
+        toast.error("Failed to load client information.");
+      }
+    };
+
+    fetchClientData();
+  }, []);
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -52,11 +77,52 @@ export default function CustomerProfile() {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSave = () => {
-    
-    setUser({ ...user, name: formData.name, location: formData.location });
-    setEditOpen(false);
-    toast.success("Profile updated successfully!");
+  const handleImageChange = (e) => {
+    setFormData({ ...formData, profileImage: e.target.files[0] });
+  };
+
+  const handleSave = async () => {
+    if (!formData.name || !formData.lastname || !formData.location) {
+      toast.error("Please fill out all the required fields.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    const formDataToSend = new FormData();
+    formDataToSend.append("name", formData.name);
+    formDataToSend.append("lastname", formData.lastname);
+    formDataToSend.append("location", formData.location);
+    if (formData.profileImage) {
+      formDataToSend.append("image_profile", formData.profileImage);
+    }
+
+    try {
+      const response = await axiosClient.post("/update-profile", formDataToSend, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      // Update user state with new data
+      setUser({
+        ...user,
+        name: response.data.user.name,
+        lastname: response.data.user.lastname,
+        location: response.data.user.location,
+        profileImage: response.data.user.image_profile
+          ? `http://192.168.254.116:8000/storage/${response.data.user.image_profile}`
+          : user.profileImage,
+      });
+
+      setEditOpen(false);
+      toast.success("Profile updated successfully!");
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      toast.error("Failed to update profile.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!user) return <Typography>Loading...</Typography>;
@@ -73,14 +139,19 @@ export default function CustomerProfile() {
             <Avatar
               src={user.profileImage}
               alt="Profile"
-              sx={{ width: 200, height: 200, border: "5px solid white", boxShadow: "0 4px 10px rgba(0,0,0,0.1)" }}
+              sx={{
+                width: 200,
+                height: 200,
+                border: "5px solid white",
+                boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+              }}
             />
           </div>
 
           {/* User Information */}
           <div className="text-center">
             <Typography variant="h4" className="font-bold">
-              {user.name}
+              {user.name} {user.lastname}
               <IconButton color="inherit" onClick={() => setEditOpen(true)}>
                 <Edit />
               </IconButton>
@@ -89,7 +160,13 @@ export default function CustomerProfile() {
           </div>
 
           {/* Tabs for Posts */}
-          <Tabs value={activeTab} onChange={handleTabChange} indicatorColor="primary" textColor="primary" variant="fullWidth">
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            indicatorColor="primary"
+            textColor="primary"
+            variant="fullWidth"
+          >
             <Tab label="Posts" value="posts" />
           </Tabs>
 
@@ -100,7 +177,7 @@ export default function CustomerProfile() {
                   user.posts.map((post) => (
                     <Paper key={post.id} className="p-4 bg-gray-100 rounded-lg shadow">
                       <Typography variant="body1">{post.content}</Typography>
-                      {post.comments.length > 0 && (
+                      {post.comments && post.comments.length > 0 && (
                         <div className="mt-2">
                           <Typography variant="subtitle1" className="font-semibold">
                             Comments:
@@ -123,7 +200,11 @@ export default function CustomerProfile() {
         </Paper>
 
         {/* Edit Profile Modal */}
-        <Modal open={editOpen} onClose={() => setEditOpen(false)} className="flex items-center justify-center">
+        <Modal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          className="flex items-center justify-center"
+        >
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <Typography variant="h5" className="mb-4">
               Edit Profile
@@ -137,6 +218,14 @@ export default function CustomerProfile() {
               margin="normal"
             />
             <TextField
+              label="Last Name"
+              name="lastname"
+              value={formData.lastname}
+              onChange={handleEditChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
               label="Location"
               name="location"
               value={formData.location}
@@ -144,13 +233,22 @@ export default function CustomerProfile() {
               fullWidth
               margin="normal"
             />
-            <a href="/password-change">Change Password</a>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="mt-4"
+            />
             <div className="flex justify-end mt-4">
-              <Button variant="outlined" onClick={() => setEditOpen(false)} className="mr-2">
+              <Button
+                variant="outlined"
+                onClick={() => setEditOpen(false)}
+                className="mr-2"
+              >
                 Cancel
               </Button>
-              <Button variant="contained" onClick={handleSave}>
-                Save
+              <Button variant="contained" onClick={handleSave} disabled={isSubmitting}>
+                {isSubmitting ? "Saving..." : "Save"}
               </Button>
             </div>
           </div>

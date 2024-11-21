@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use App\Models\Booking;
+use Illuminate\Support\Facades\Log;
 
 class AdminController extends Controller
 {
@@ -131,4 +133,57 @@ class AdminController extends Controller
 
         return response()->json(['message' => 'User deleted successfully']);
     }
+
+    public function getSummaryReport()
+    {
+        try {
+            // Get today's date
+            $today = now();
+            
+            // Initialize arrays for daily data for each metric for the last 30 days
+            $totalUsers = [];
+            $usersCreatedToday = [];
+            $totalBookings = [];
+            $bookingsToday = [];
+            $cancelledBookings = [];
+            $approvedBookings = [];
+    
+            // Loop through each of the last 30 days
+            for ($i = 0; $i < 30; $i++) {
+                $date = $today->copy()->subDays($i);
+    
+                // Daily metrics calculations
+                $totalUsers[] = User::whereDate('created_at', '<=', $date->toDateString())->count();
+                $usersCreatedToday[] = User::whereDate('created_at', $date->toDateString())->count();
+                $totalBookings[] = Booking::whereDate('created_at', '<=', $date->toDateString())->count();
+                $bookingsToday[] = Booking::whereDate('created_at', $date->toDateString())->count();
+                $cancelledBookings[] = Booking::where('status', 'Cancelled')->whereDate('created_at', $date->toDateString())->count();
+                $approvedBookings[] = Booking::where('status', 'APPROVED')->whereDate('created_at', $date->toDateString())->count();
+            }
+    
+            // Reverse the arrays to start with the oldest date first
+            $totalUsers = array_reverse($totalUsers);
+            $usersCreatedToday = array_reverse($usersCreatedToday);
+            $totalBookings = array_reverse($totalBookings);
+            $bookingsToday = array_reverse($bookingsToday);
+            $cancelledBookings = array_reverse($cancelledBookings);
+            $approvedBookings = array_reverse($approvedBookings);
+    
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'total_users' => $totalUsers,
+                    'users_created_today' => $usersCreatedToday,
+                    'total_bookings' => $totalBookings,
+                    'bookings_today' => $bookingsToday,
+                    'cancelled_bookings' => $cancelledBookings,
+                    'approved_bookings' => $approvedBookings,
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error("Summary Report Error: " . $e->getMessage());
+            return response()->json(['error' => 'There was an error generating the report. Please try again.'], 500);
+        }
+    }
+    
 }

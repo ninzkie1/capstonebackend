@@ -8,6 +8,8 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
+use App\Notifications\CustomResetPasswordNotification;
+
 
 class User extends Authenticatable
 {
@@ -50,10 +52,14 @@ class User extends Authenticatable
         'talento_coin_balance' => 'decimal:2',
     ];
 
+
     /**
      * Relationships
      */
-
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new CustomResetPasswordNotification($token));
+    }
     // Relationship with PerformerPortfolio
     public function performerPortfolio()
     {

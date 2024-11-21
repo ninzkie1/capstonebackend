@@ -37,10 +37,27 @@ import Notification from './views/Notification';
 import UserNotification from './views/UserNotification';
 import Bookingdesign from './views/Bookingdesign';
 import PendingPerformer from './views/PendingPerformer';
+import NotFound from './views/NotFound';
+import PasswordReset from './views/PasswordReset';
+
+
+function ProtectedRoute({ children, allowedRoles }) {
+  const { user } = useStateContext();
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to="/not-authorized" replace />;
+  }
+
+  return children;
+}
 
 // Role-based redirect component
 function RoleBasedRedirect() {
-  const { user } = useStateContext(); // Assuming you have user role here
+  const { user } = useStateContext();
 
   if (!user) {
     // If no user, redirect to login
@@ -68,10 +85,10 @@ const router = createBrowserRouter([
     element: <RoleBasedRedirect />, // Redirect based on role
   },
 
-  // Performer routes
+  // Performer routes role = performer
   {
     path: '/',
-    element: <PerformerLayout />,
+    element:  <ProtectedRoute allowedRoles={['performer']}><PerformerLayout /></ProtectedRoute>,
     children: [
       {
         path: 'portfolio',
@@ -104,10 +121,10 @@ const router = createBrowserRouter([
     ]
   },
 
-  // Customer routes
+  // Customer routes role = client
   {
     path: '/',
-    element: <CustomerLayout />,
+    element: <ProtectedRoute allowedRoles={['client']}><CustomerLayout /></ProtectedRoute>,
     children: [
       {
         path: 'customer',
@@ -156,10 +173,10 @@ const router = createBrowserRouter([
     ]
   },
 
-  // Admin routes
+  // Admin routes role = admin
   {
     path: '',
-    element: <AdminLayout />,
+    element: <ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute>,
     children: [
       {
         path: 'reports',
@@ -218,12 +235,20 @@ const router = createBrowserRouter([
         path: 'forgotpw',
         element : <ForgotPassword/>
       },
+      {
+        path: 'password-reset',
+        element : <PasswordReset/>
+      },
      {
       path: 'Notify',
       element: <UserNotification/>
      }
     ]
   },
+  {
+    path: '*',
+    element: <NotFound/>
+  }
 ]);
 
 export default router;

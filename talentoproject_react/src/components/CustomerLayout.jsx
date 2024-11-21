@@ -70,31 +70,36 @@ export default function CustomerLayout() {
   const isMenuOpen = Boolean(anchorEl);
 
   return (
-    <div className="flex flex-col min-h-screen bg-cover bg-center relative overflow-hidden" style={{ backgroundImage: "url('/confetti.png')", backgroundRepeat: "no-repeat", backgroundPosition: "center", backgroundSize: "cover" }}>
-      <div className="absolute inset-0 bg-black opacity-50"></div>
+    <div className="flex flex-col min-h-screen bg-cover bg-center relative overflow-hidden" style={{ backgroundImage: "url('/confetti.png')" }}>
+     
       
       {/* Header */}
       <AppBar position="fixed" className="!bg-gradient-to-r from-yellow-600 to-yellow-500 shadow-none top-0 left-0 w-full z-50">
-        <Toolbar className="container mx-auto flex justify-between">
+        <Toolbar className="container mx-auto flex justify-between px-4 sm:px-6 lg:px-8">
           <Typography variant="h6" component="div" className="flex items-center">
-            <img src={logo} alt="Logo" className="h-12 mr-2 animate-bounce" />
-            <span className="text-blue-900 font-extrabold font-serif">TALENTO</span>
+            <img src={logo} alt="Logo" className="h-8 sm:h-10 w-auto mr-2 animate-bounce" />
+            <span className="text-blue-900 font-extrabold font-serif text-sm sm:text-lg lg:text-xl">TALENTO</span>
           </Typography>
           {isMobile ? (
-            // Menu button for mobile
             <IconButton edge="end" color="inherit" onClick={toggleDrawer(true)}>
               <MenuIcon />
             </IconButton>
           ) : (
-            // Full navigation menu for larger screens
             <div className="flex space-x-4 text-blue-900">
-              <Button color="inherit" href="/" className="text-blue-900 hover:text-blue-700 transition-colors duration-300" startIcon={<HomeIcon />}>Home</Button>
-              <Button color="inherit" href="/dashboard" className="text-blue-900 hover:text-blue-700 transition-colors duration-300" startIcon={<DashboardIcon />}>Dashboard</Button>
-              <Button color="inherit" href="/posts" className="text-blue-900 hover:text-blue-700 transition-colors duration-300" startIcon={<PostIcon />}>Post</Button>
-              <Button color="inherit" href="/wallet" className="text-blue-900 hover:text-blue-700 transition-colors duration-300" startIcon={<WalletIcon />}>Wallet</Button>
+              <Button href="/" className="text-blue-900 hover:text-blue-700 transition-colors duration-300 text-sm sm:text-base" startIcon={<HomeIcon />}>
+                Home
+              </Button>
+              <Button href="/dashboard" className="text-blue-900 hover:text-blue-700 transition-colors duration-300 text-sm sm:text-base" startIcon={<DashboardIcon />}>
+                Dashboard
+              </Button>
+              <Button href="/posts" className="text-blue-900 hover:text-blue-700 transition-colors duration-300 text-sm sm:text-base" startIcon={<PostIcon />}>
+                Post
+              </Button>
+              <Button href="/wallet" className="text-blue-900 hover:text-blue-700 transition-colors duration-300 text-sm sm:text-base" startIcon={<WalletIcon />}>
+                Wallet
+              </Button>
               <Button
-                color="inherit"
-                className="text-blue-900 hover:text-blue-700 transition-colors duration-300"
+                className="text-blue-900 hover:text-blue-700 transition-colors duration-300 text-sm sm:text-base"
                 startIcon={<ProfileIcon />}
                 onClick={handleProfileMenuOpen}
               >
@@ -113,7 +118,7 @@ export default function CustomerLayout() {
         transformOrigin={{ vertical: "top", horizontal: "left" }}
         open={isMenuOpen}
         onClose={handleMenuClose}
-        MenuListProps={{ style: { backgroundColor: "#FFEB3B", padding: '10px' } }}
+        MenuListProps={{ style: { backgroundColor: "#FFEB3B", padding: "10px" } }}
       >
         <MenuItem onClick={handleEditProfile} className="hover:bg-yellow-400 transition-colors duration-300">
           <ProfileIcon className="mr-2 text-blue-900" />
@@ -127,7 +132,7 @@ export default function CustomerLayout() {
 
       {/* Mobile Drawer */}
       <Drawer anchor="right" open={drawerOpen} onClose={toggleDrawer(false)}>
-        <List className="bg-yellow-600">
+        <List className="bg-yellow-600 h-screen">
           <ListItem button onClick={() => navigate("/")} className="text-blue-900 hover:bg-yellow-500 transition-colors duration-300">
             <ListItemIcon><HomeIcon className="text-blue-900" /></ListItemIcon>
             <ListItemText primary="Home" />
@@ -156,7 +161,7 @@ export default function CustomerLayout() {
       </Drawer>
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-6 mt-28">
+      <main className="flex-1 container mx-auto px-4 py-6 mt-20 sm:mt-28">
         <Outlet />
       </main>
     </div>

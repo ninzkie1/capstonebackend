@@ -572,9 +572,13 @@ export default function ClientPost() {
                 <Card sx={{ marginBottom: 2 }}>
                   <CardContent>
                     <Box sx={{ display: "flex", alignItems: "center", marginBottom: 1, justifyContent: "space-between" }}>
-                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                    <Box sx={{ display: "flex", alignItems: "center" }}>
                         {post.user?.image_profile ? (
-                          <Avatar src={post.user.image_profile} alt={post.client_name} sx={{ marginRight: 2 }} />
+                          <Avatar
+                            src={`http://192.168.254.116:8000/storage/${post.user.image_profile}`}
+                            alt={post.client_name}
+                            sx={{ marginRight: 2 }}
+                          />
                         ) : (
                           <Avatar sx={{ bgcolor: "#2196f3", marginRight: 2 }}>
                             <AccountCircleIcon />
