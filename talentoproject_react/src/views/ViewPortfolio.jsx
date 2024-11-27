@@ -119,7 +119,7 @@ export default function ViewPortfolio() {
                                 <img
                                     src={
                                         performer.user?.image_profile
-                                            ? `http://192.168.254.116:8000/storage/${performer.user.image_profile}`
+                                            ? `http://192.168.1.23:8000/storage/${performer.user.image_profile}`
                                             : profilePlaceholder
                                     }
                                     alt="Profile Photo"
@@ -220,7 +220,7 @@ export default function ViewPortfolio() {
                                                             <img
                                                                 src={
                                                                     review.user?.image_profile
-                                                                        ? `http://192.168.254.116:8000/storage/${review.user.image_profile}`
+                                                                        ? `http://192.168.1.23:8000/storage/${review.user.image_profile}`
                                                                         : profilePlaceholder
                                                                 }
                                                                 alt="User Profile"
@@ -290,7 +290,7 @@ export default function ViewPortfolio() {
                                                     <div key={index} className="relative group overflow-hidden rounded-lg shadow-md">
                                                         <video className="w-full h-40 object-cover rounded-lg" controls>
                                                             <source
-                                                                src={`http://192.168.254.116:8000/storage/${video.highlight_video}`}
+                                                                src={`http://192.168.1.23:8000/storage/${video.highlight_video}`}
                                                                 type="video/mp4"
                                                             />
                                                         </video>

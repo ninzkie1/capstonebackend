@@ -29,7 +29,7 @@ export default function PasswordReset() {
         setError(null); // Reset error message before attempting reset
 
         axios
-            .post("http://192.168.254.116:8000/api/reset-password", {
+            .post("http://192.168.1.23:8000/api/reset-password", {
                 token,
                 email,
                 password,

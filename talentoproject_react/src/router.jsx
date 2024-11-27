@@ -39,6 +39,7 @@ import Bookingdesign from './views/Bookingdesign';
 import PendingPerformer from './views/PendingPerformer';
 import NotFound from './views/NotFound';
 import PasswordReset from './views/PasswordReset';
+import AboutUs from './views/AboutUs';
 
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -239,6 +240,10 @@ const router = createBrowserRouter([
         path: 'password-reset',
         element : <PasswordReset/>
       },
+      {
+        path: 'aboutus',
+        element: <AboutUs/>
+       },
      {
       path: 'Notify',
       element: <UserNotification/>
