@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import axios from "axios";
+import axiosClient from "../axiosClient"; // Ensure the path to axiosClient is correct
 import { Button, TextField, CircularProgress, Typography, Box } from "@mui/material";
 
 export default function PasswordReset() {
@@ -25,22 +25,29 @@ export default function PasswordReset() {
     const handleSubmit = (e) => {
         e.preventDefault();
 
+        if (!token || !email) {
+            setError("Invalid or expired token. Please request a new reset link.");
+            return;
+        }
+
         setIsLoading(true);
         setError(null); // Reset error message before attempting reset
 
-        axios
-            .post("http://192.168.254.116:8000/api/reset-password", {
+        axiosClient
+            .post("/reset-password", {
                 token,
                 email,
                 password,
                 password_confirmation: passwordConfirmation,
             })
             .then((response) => {
+                console.log(response.data); // Log the response
                 setMessage(response.data.message);
                 setError(null);
                 setIsLoading(false);
             })
             .catch((err) => {
+                console.error(err); // Log the error
                 setError(err.response?.data?.message || "An error occurred.");
                 setMessage(null);
                 setIsLoading(false);
@@ -48,23 +55,13 @@ export default function PasswordReset() {
     };
 
     return (
-        <Box
-            className="min-h-screen flex items-center justify-center bg-gradient-to-r from-yellow-400 to-orange-500"
-            p={4}
-        >
+        <Box className="min-h-screen flex items-center justify-center bg-gradient-to-r from-yellow-400 to-orange-500" p={4}>
             <div className="w-full max-w-md p-8 bg-white shadow-lg rounded-lg">
-                <Typography
-                    variant="h4"
-                    gutterBottom
-                    className="text-center font-semibold"
-                >
+                <Typography variant="h4" gutterBottom className="text-center font-semibold">
                     Reset Your Password
                 </Typography>
-                <Typography
-                 variant="h6"
-                 gutterBottom
-                 className="text-center font-semibold">
-                Changing password for {email}!
+                <Typography variant="h6" gutterBottom className="text-center font-semibold">
+                    Changing password for {email}!
                 </Typography>
 
                 {isLoading && (
@@ -86,7 +83,6 @@ export default function PasswordReset() {
                 )}
 
                 <form onSubmit={handleSubmit}>
-                    {/* Password fields */}
                     <div className="mb-4">
                         <TextField
                             label="New Password"
@@ -111,26 +107,10 @@ export default function PasswordReset() {
                         />
                     </div>
 
-                    <Button
-                        type="submit"
-                        variant="contained"
-                        color="primary"
-                        fullWidth
-                        size="large"
-                        disabled={isLoading}
-                    >
+                    <Button type="submit" variant="contained" color="primary" fullWidth size="large" disabled={isLoading}>
                         Reset Password
                     </Button>
                 </form>
-
-                <div className="mt-6 text-center">
-                    <Typography variant="body2" color="textSecondary">
-                        Remembered your password?{" "}
-                        <a href="/login" className="text-indigo-600 hover:text-indigo-800">
-                            Login here
-                        </a>
-                    </Typography>
-                </div>
             </div>
         </Box>
     );

@@ -164,8 +164,10 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::get('/chats', [ChatController::class, 'index']);
 Route::post('/chats', [ChatController::class, 'store']);   
 
-Route::middleware(['web'])->group(function () {
-    Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
-    Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
+// Route::middleware(['web'])->group(function () {
+//     Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
+//     Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
     
-});
+// });
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail']);
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);

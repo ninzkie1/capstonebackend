@@ -27,9 +27,7 @@ class LoginRequest extends FormRequest
             'email' => 'required|email',
             'password' =>[
                 'required',
-                 RulesPassword::min(8)
-                 ->letters()
-
+                 
             ]
         ];
     }
