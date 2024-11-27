@@ -52,7 +52,7 @@ class PerformerApplicationController extends Controller
                 'name' => $application->name,
                 'lastname' => $application->lastname,
                 'email' => $application->email,
-                'password' => Hash::make('default_password'), // Set default or generate random password
+                'password' => Hash::make($application->password), // Set default or generate random password
                 'role' => 'performer',
             ]);
     

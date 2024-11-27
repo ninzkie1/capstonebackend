@@ -16,6 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id')->nullable(); // Nullable until the performer is approved
             $table->string('name');
             $table->string('lastname');
+            $table->string('password');
             $table->string('email')->unique(); // Email of the applicant
             $table->string('talent_name'); // Performer’s talent name
             $table->string('location'); // Performer’s location

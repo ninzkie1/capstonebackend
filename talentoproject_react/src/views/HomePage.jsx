@@ -21,7 +21,12 @@ export default function HomePage() {
     const navigate = useNavigate();
 
     useEffect(() => {
+<<<<<<< HEAD
         axiosClient.get('http://127.0.0.1:8000/api/performer')
+=======
+        axiosClient
+            .get("http://192.168.1.25:8000/api/performer")
+>>>>>>> 2efd938beefb56725a50997f037da9dad0979a42
             .then((response) => {
                 setPerformers(response.data);
                 setIsMuted(response.data.map(() => true));
@@ -158,7 +163,11 @@ export default function HomePage() {
                                     <div key={index} className="relative group overflow-hidden rounded-lg shadow-lg">
                                         <video
                                             className="w-full h-48 object-cover group-hover:scale-110 group-hover:opacity-80 transition-transform duration-500"
+<<<<<<< HEAD
                                             src={`http://127.0.0.1:8000/storage/${performer.performer_portfolio.highlights[0].highlight_video}`}
+=======
+                                            src={`http://192.168.1.25:8000/storage/${performer.performer_portfolio.highlights[0].highlight_video}`}
+>>>>>>> 2efd938beefb56725a50997f037da9dad0979a42
                                             autoPlay
                                             loop
                                             muted={isMuted[index]}
@@ -187,6 +196,7 @@ export default function HomePage() {
                             Meet our top performers and see why they are the best choice for your events.
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+<<<<<<< HEAD
                             {performers.map((performer, index) => (
                                 <div
                                     key={index}
@@ -208,6 +218,55 @@ export default function HomePage() {
                                                 precision={0.5}
                                                 readOnly
                                             />
+=======
+                            {performers
+                                .filter(
+                                    (performer) =>
+                                        performer.image_profile &&
+                                        performer.performer_portfolio?.talent_name
+                                )
+                                .map((performer, index) => (
+                                    <div
+                                        key={index}
+                                        className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-md transition-transform transform hover:scale-105 hover:shadow-xl"
+                                    >
+                                        <img
+                                            src={`http://192.168.1.25:8000/storage/${performer.image_profile}`}
+                                            alt={performer.name}
+                                            className="w-full h-40 object-cover"
+                                        />
+                                        <div className="p-4">
+                                            <h3 className="text-lg font-semibold mb-2 text-yellow-700">
+                                                {performer.name}
+                                            </h3>
+                                            <p className="text-gray-600 font-semibold">
+                                                <label>Talent:</label>{" "}
+                                                {performer.performer_portfolio?.talent_name}
+                                            </p>
+                                            <p className="text-gray-600 font-semibold">
+                                                <label>Location:</label>{" "}
+                                                {performer.performer_portfolio?.location}
+                                            </p>
+                                            <div className="flex items-center mt-2">
+                                                <span className="mr-2 font-semibold text-yellow-700">
+                                                    Rating:
+                                                </span>
+                                                <Rating
+                                                    value={
+                                                        performer.performer_portfolio
+                                                            ?.average_rating || 4.0
+                                                    }
+                                                    precision={0.5}
+                                                    readOnly
+                                                />
+                                            </div>
+                                            <button
+                                                className="mt-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-4 py-2 rounded-full shadow hover:scale-105 transition-transform duration-300"
+                                                onClick={() => handleSeeDetails(performer)}
+                                            >
+                                                See Details
+                                            </button>
+>>>>>>> 2efd938beefb56725a50997f037da9dad0979a42
                                         </div>
                                         <button
                                             className="mt-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white px-4 py-2 rounded-full shadow hover:scale-105 transition-transform duration-300"

@@ -45,7 +45,11 @@ export default function CustomerProfile() {
           name: client.name,
           lastname: client.lastname,
           profileImage: client?.image_profile
+<<<<<<< HEAD
             ? `http://192.168.1.23:8000/storage/${client.image_profile}`
+=======
+            ? `http://192.168.1.25:8000/storage/${client.image_profile}`
+>>>>>>> 2efd938beefb56725a50997f037da9dad0979a42
             : profilePlaceholder,
           location: client.location || "Unknown Location",
           friends: client.friends || 0,
@@ -111,7 +115,11 @@ export default function CustomerProfile() {
         lastname: response.data.user.lastname,
         location: response.data.user.location,
         profileImage: response.data.user.image_profile
+<<<<<<< HEAD
           ? `http://192.168.1.23:8000/storage/${response.data.user.image_profile}`
+=======
+          ? `http://192.168.1.25:8000/storage/${response.data.user.image_profile}`
+>>>>>>> 2efd938beefb56725a50997f037da9dad0979a42
           : user.profileImage,
       });
 

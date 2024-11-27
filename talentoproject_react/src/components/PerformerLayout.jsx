@@ -90,7 +90,7 @@ export default function PerformerLayout() {
         <Avatar
           src={
             performer?.user?.image_profile
-              ? `http://192.168.254.116:8000/storage/${performer.user.image_profile}`
+              ? `http://192.168.1.25:8000/storage/${performer.user.image_profile}`
               : Logo
           }
           alt="Profile Image"
