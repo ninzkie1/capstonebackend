@@ -1,20 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Menu,
-  MenuItem,
-  IconButton,
-  Drawer,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  useMediaQuery,
-} from "@mui/material";
+import { AppBar, Toolbar, Typography, Button, Menu, MenuItem, IconButton, Drawer, List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
+import { useMediaQuery } from "@mui/material";
+import { useStateContext } from "../context/contextprovider";
 import {
   Home as HomeIcon,
   Dashboard as DashboardIcon,
@@ -22,9 +10,10 @@ import {
   AccountCircle as ProfileIcon,
   AccountBalanceWallet as WalletIcon,
   Logout as LogoutIcon,
+  Edit as EditIcon,
   Menu as MenuIcon,
 } from "@mui/icons-material";
-import { useStateContext } from "../context/contextprovider";
+import MessageIcon from '@mui/icons-material/Message';
 import logo from "../assets/logotalentos.png";
 
 export default function CustomerLayout() {
@@ -32,6 +21,7 @@ export default function CustomerLayout() {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
   const isMobile = useMediaQuery("(max-width:768px)");
 
   useEffect(() => {
@@ -55,6 +45,11 @@ export default function CustomerLayout() {
     handleMenuClose();
   };
 
+  const handleMessages = () => {
+    navigate("/messages");
+    handleMenuClose();
+  };
+
   const handleEditProfile = () => {
     navigate("/customer-profile");
     handleMenuClose();
@@ -70,36 +65,47 @@ export default function CustomerLayout() {
   const isMenuOpen = Boolean(anchorEl);
 
   return (
-    <div className="flex flex-col min-h-screen bg-cover bg-center relative overflow-hidden" style={{ backgroundImage: "url('/confetti.png')" }}>
-     
-      
+    <div
+      className="flex flex-col min-h-screen bg-cover bg-center bg-yellow-500 relative overflow-hidden"
+      style={{
+        backgroundImage: "url('/confetti.png')",
+        backgroundRepeat: "no-repeat",
+        backgroundPosition: "center",
+        backgroundSize: "cover",
+      }}
+    >
+      <div className="absolute inset-0 bg-black opacity-50"></div>
+
       {/* Header */}
-      <AppBar position="fixed" className="!bg-gradient-to-r from-yellow-600 to-yellow-500 shadow-none top-0 left-0 w-full z-50">
-        <Toolbar className="container mx-auto flex justify-between px-4 sm:px-6 lg:px-8">
+      <AppBar position="fixed" className="!bg-gradient-to-r from-yellow-500 to-yellow-700 shadow-none top-0 left-0 w-full z-50">
+        <Toolbar className="flex justify-between">
           <Typography variant="h6" component="div" className="flex items-center">
-            <img src={logo} alt="Logo" className="h-8 sm:h-10 w-auto mr-2 animate-bounce" />
-            <span className="text-blue-900 font-extrabold font-serif text-sm sm:text-lg lg:text-xl">TALENTO</span>
+            <img src={logo} alt="Logo" className="h-12 mr-2 animate-bounce" />
+            <span className="text-gray-100 font-extrabold font-serif">TALENTO</span>
           </Typography>
           {isMobile ? (
+            // Menu button for mobile
             <IconButton edge="end" color="inherit" onClick={toggleDrawer(true)}>
               <MenuIcon />
             </IconButton>
           ) : (
-            <div className="flex space-x-4 text-blue-900">
-              <Button href="/" className="text-blue-900 hover:text-blue-700 transition-colors duration-300 text-sm sm:text-base" startIcon={<HomeIcon />}>
+            // Full navigation menu for larger screens
+            <div className="flex space-x-4 text-gray-100">
+              <Button color="inherit" href="/" className="text-gray-100 hover:text-blue-700 transition-colors duration-300" startIcon={<HomeIcon />}>
                 Home
               </Button>
-              <Button href="/dashboard" className="text-blue-900 hover:text-blue-700 transition-colors duration-300 text-sm sm:text-base" startIcon={<DashboardIcon />}>
+              <Button color="inherit" href="/dashboard" className="text-gray-100 hover:text-blue-700 transition-colors duration-300" startIcon={<DashboardIcon />}>
                 Dashboard
               </Button>
-              <Button href="/posts" className="text-blue-900 hover:text-blue-700 transition-colors duration-300 text-sm sm:text-base" startIcon={<PostIcon />}>
+              <Button color="inherit" href="/posts" className="text-gray-100 hover:text-blue-700 transition-colors duration-300" startIcon={<PostIcon />}>
                 Post
               </Button>
-              <Button href="/wallet" className="text-blue-900 hover:text-blue-700 transition-colors duration-300 text-sm sm:text-base" startIcon={<WalletIcon />}>
+              <Button color="inherit" href="/wallet" className="text-gray-100 hover:text-blue-700 transition-colors duration-300" startIcon={<WalletIcon />}>
                 Wallet
               </Button>
               <Button
-                className="text-blue-900 hover:text-blue-700 transition-colors duration-300 text-sm sm:text-base"
+                color="inherit"
+                className="text-gray-100 hover:text-blue-700 transition-colors duration-300"
                 startIcon={<ProfileIcon />}
                 onClick={handleProfileMenuOpen}
               >
@@ -124,6 +130,10 @@ export default function CustomerLayout() {
           <ProfileIcon className="mr-2 text-blue-900" />
           View Profile
         </MenuItem>
+        <MenuItem onClick={handleMessages} className="hover:bg-yellow-400 transition-colors duration-300">
+          <MessageIcon className="mr-2 text-blue-900" />
+          Messages
+        </MenuItem>
         <MenuItem onClick={handleLogout} className="hover:bg-yellow-400 transition-colors duration-300">
           <LogoutIcon className="mr-2 text-blue-900" />
           Logout
@@ -132,36 +142,54 @@ export default function CustomerLayout() {
 
       {/* Mobile Drawer */}
       <Drawer anchor="right" open={drawerOpen} onClose={toggleDrawer(false)}>
-        <List className="bg-yellow-600 h-screen">
-          <ListItem button onClick={() => navigate("/")} className="text-blue-900 hover:bg-yellow-500 transition-colors duration-300">
-            <ListItemIcon><HomeIcon className="text-blue-900" /></ListItemIcon>
+        <List className="bg-yellow-600">
+          <ListItem button onClick={() => navigate("/")} className="text-blue-900">
+            <ListItemIcon>
+              <HomeIcon />
+            </ListItemIcon>
             <ListItemText primary="Home" />
           </ListItem>
-          <ListItem button onClick={() => navigate("/dashboard")} className="text-blue-900 hover:bg-yellow-500 transition-colors duration-300">
-            <ListItemIcon><DashboardIcon className="text-blue-900" /></ListItemIcon>
+          <ListItem button onClick={() => navigate("/dashboard")} className="text-blue-900">
+            <ListItemIcon>
+              <DashboardIcon />
+            </ListItemIcon>
             <ListItemText primary="Dashboard" />
           </ListItem>
-          <ListItem button onClick={() => navigate("/posts")} className="text-blue-900 hover:bg-yellow-500 transition-colors duration-300">
-            <ListItemIcon><PostIcon className="text-blue-900" /></ListItemIcon>
+          <ListItem button onClick={() => navigate("/posts")} className="text-blue-900">
+            <ListItemIcon>
+              <PostIcon />
+            </ListItemIcon>
             <ListItemText primary="Post" />
           </ListItem>
-          <ListItem button onClick={() => navigate("/wallet")} className="text-blue-900 hover:bg-yellow-500 transition-colors duration-300">
-            <ListItemIcon><WalletIcon className="text-blue-900" /></ListItemIcon>
+          <ListItem button onClick={() => navigate("/wallet")} className="text-blue-900">
+            <ListItemIcon>
+              <WalletIcon />
+            </ListItemIcon>
             <ListItemText primary="Wallet" />
           </ListItem>
-          <ListItem button onClick={handleEditProfile} className="text-blue-900 hover:bg-yellow-500 transition-colors duration-300">
-            <ListItemIcon><ProfileIcon className="text-blue-900" /></ListItemIcon>
+          <ListItem button onClick={handleEditProfile} className="text-blue-900">
+            <ListItemIcon>
+              <ProfileIcon />
+            </ListItemIcon>
             <ListItemText primary="View Profile" />
           </ListItem>
-          <ListItem button onClick={handleLogout} className="text-blue-900 hover:bg-yellow-500 transition-colors duration-300">
-            <ListItemIcon><LogoutIcon className="text-blue-900" /></ListItemIcon>
+          <ListItem button onClick={handleMessages} className="text-blue-900">
+            <ListItemIcon>
+              <MessageIcon />
+            </ListItemIcon>
+            <ListItemText primary="Messages" />
+          </ListItem>
+          <ListItem button onClick={handleLogout} className="text-blue-900">
+            <ListItemIcon>
+              <LogoutIcon />
+            </ListItemIcon>
             <ListItemText primary="Logout" />
           </ListItem>
         </List>
       </Drawer>
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-6 mt-20 sm:mt-28">
+      <main className="flex-1 bg-transparent px-0 py-0 mt-28">
         <Outlet />
       </main>
     </div>

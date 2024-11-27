@@ -575,7 +575,7 @@ export default function ClientPost() {
                     <Box sx={{ display: "flex", alignItems: "center" }}>
                         {post.user?.image_profile ? (
                           <Avatar
-                            src={`http://192.168.1.25:8000/storage/${post.user.image_profile}`}
+                            src={`http://192.168.1.23:8000/storage/${post.user.image_profile}`}
                             alt={post.client_name}
                             sx={{ marginRight: 2 }}
                           />

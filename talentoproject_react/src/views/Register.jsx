@@ -1,5 +1,5 @@
 import React, { useRef, useState } from "react";
-import { Modal, Button, Box } from "@mui/material";
+import { Modal, Button, Box, Link } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import axiosClient from "../axiosClient";
 import { useStateContext } from "../context/contextprovider";
@@ -289,6 +289,12 @@ export default function Register() {
                                         Create Account
                                     </button>
                                 </div>
+                                <p className="mt-6 text-center text-sm text-gray-200">
+                                Already have an account? {" "}
+                                <Link to="/login" className="font-medium text-indigo-400 hover:text-indigo-300">
+                                    Log in now
+                                </Link>
+                            </p>
                             </form>
                         </div>
                     </div>
