@@ -32,14 +32,9 @@ export default function PasswordReset() {
 
         setIsLoading(true);
         setError(null); // Reset error message before attempting reset
-
-<<<<<<< HEAD
         axiosClient
             .post("/reset-password", {
-=======
-        axios
-            .post("http://192.168.1.23:8000/api/reset-password", {
->>>>>>> 63005161f80cd6de14fb3904676b97c85961649d
+
                 token,
                 email,
                 password,
