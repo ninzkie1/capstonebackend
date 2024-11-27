@@ -53,6 +53,7 @@ class AuthController extends Controller
                     'name' => $validatedData['name'],
                     'lastname' => $validatedData['lastname'],
                     'email' => $validatedData['email'],
+                    'password' => $validatedData['password'],
                     'talent_name' => $validatedData['talent_name'] ?? '', // Optional fields
                     'location' => $validatedData['location'] ?? '',
                     'description' => $validatedData['description'] ?? '',
