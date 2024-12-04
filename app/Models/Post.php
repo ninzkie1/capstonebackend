@@ -54,4 +54,12 @@ public function event()
     {
         return $this->belongsTo(Barangay::class, 'barangay_id');
     }
+    public function applications()
+{
+    return $this->hasMany(Applications::class, 'post_id');
+}
+public function client()
+{
+    return $this->belongsTo(User::class, 'user_id'); 
+}
 }

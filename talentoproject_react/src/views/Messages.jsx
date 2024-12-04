@@ -18,9 +18,7 @@ import {
   TextField,
   useMediaQuery,
   Paper,
-  Divider,
 } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useTheme } from "@mui/material/styles";
 
@@ -32,28 +30,53 @@ export default function Messages() {
   const { user } = useStateContext();
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
-  const [clients, setClients] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
 
-  // Fetch clients with accepted bookings
+  // Fetch contacts (clients and admins)
   useEffect(() => {
-    const fetchClientsWithAcceptedBookings = async () => {
+    const fetchContacts = async () => {
       try {
-        const response = await axiosClient.get("/canChatClients");
-        if (Array.isArray(response.data)) {
-          setClients(response.data);
+        // Fetch both clients and admins concurrently
+        const [clientsResponse, adminsResponse] = await Promise.all([
+          axiosClient.get("/canChatClients"),
+          axiosClient.get("/getAdmin"),
+          
+        ]);
+
+        let clients = [];
+        let admins = [];
+        
+
+        // Extract clients data
+        if (clientsResponse?.data?.status === "success" && Array.isArray(clientsResponse.data.data)) {
+          clients = clientsResponse.data.data;
         } else {
-          console.error("Unexpected response format:", response);
+          console.error("Unexpected clients response format:", clientsResponse);
         }
+
+        // Extract admins data
+        if (Array.isArray(adminsResponse?.data)) {
+          admins = adminsResponse.data.map((admin) => ({
+            ...admin,
+            isAdmin: true, // Add a flag to distinguish admins
+          }));
+        } else {
+          console.error("Unexpected admins response format:", adminsResponse);
+        }
+
+        // Combine clients and admins
+        setContacts([...clients, ...admins]);
       } catch (error) {
-        console.error("Error fetching clients:", error);
+        console.error("Error fetching contacts:", error);
+        setContacts([]);
       }
     };
 
-    fetchClientsWithAcceptedBookings();
+    fetchContacts();
   }, [user.id]);
 
-  // Fetch messages for the selected client
+  // Fetch messages for the selected contact
   useEffect(() => {
     if (selectedUser) {
       const fetchMessages = async () => {
@@ -113,9 +136,9 @@ export default function Messages() {
     }
   };
 
-  // Handle user selection from client list
-  const handleUserClick = (client) => {
-    setSelectedUser(client);
+  // Handle user selection from contacts list
+  const handleUserClick = (contact) => {
+    setSelectedUser(contact);
     setMessages([]);
   };
 
@@ -151,17 +174,24 @@ export default function Messages() {
           Contacts
         </Typography>
         <List>
-          {clients.length > 0 ? (
-            clients.map((client) => (
-              <ListItem button key={client.id} onClick={() => handleUserClick(client)}>
+          {contacts.length > 0 ? (
+            contacts.map((contact, index) => (
+              <ListItem
+                button
+                key={index}
+                onClick={() => handleUserClick(contact)}
+              >
                 <ListItemAvatar>
-                  <Avatar src={`https://i.pravatar.cc/40?img=${client.id}`} />
+                  <Avatar src={`https://i.pravatar.cc/40?img=${index}`} />
                 </ListItemAvatar>
-                <ListItemText primary={client.name} />
+                <ListItemText
+                  primary={contact.name || "Unknown"}
+                  secondary={contact.isAdmin ? "Admin" : "Client"}
+                />
               </ListItem>
             ))
           ) : (
-            <Typography sx={{ p: 2 }}>No clients available to chat.</Typography>
+            <Typography sx={{ p: 2 }}>No contacts available to chat.</Typography>
           )}
         </List>
       </Box>

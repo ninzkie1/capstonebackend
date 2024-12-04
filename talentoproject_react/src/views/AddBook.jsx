@@ -1,5 +1,4 @@
-import React, { useEffect, useState,Navigate } from 'react';
-import echo from "../echo";
+import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axiosClient from '../axiosClient';
 import {
@@ -12,21 +11,36 @@ import {
   CardContent,
   Rating,
   Modal,
+  Tooltip,
 } from '@mui/material';
+import Calendar from 'react-calendar';
+import 'react-calendar/dist/Calendar.css';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+
+// Extend dayjs to include timezone and UTC support
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+// Set default timezone to Asia/Manila
+dayjs.tz.setDefault('Asia/Manila');
 
 export default function AddBook() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { performer, startDate, startTime, endTime, municipality, barangay } = location.state || {};
+  const { performers = [], startDate, startTime, endTime, municipality, barangay } = location.state || {};
 
   const [events, setEvents] = useState([]);
   const [themes, setThemes] = useState([]);
   const [municipalities, setMunicipalities] = useState([]);
   const [barangays, setBarangays] = useState([]);
+  const [totalCost, setTotalCost] = useState(0);
+  const [unavailableDates, setUnavailableDates] = useState([]);
+  const [pendingDates, setPendingDates] = useState([]);
   const [formData, setFormData] = useState({
-    performerId: performer?.performer_portfolio.id || '',
     eventName: '',
     themeName: '',
     startDate: startDate || '',
@@ -40,27 +54,16 @@ export default function AddBook() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
 
-  // Fetch events when the component loads
   useEffect(() => {
+    // Fetch events
     axiosClient.get('/events')
       .then((response) => {
         setEvents(response.data);
-
-        if (performer) {
-          const portfolio = performer.performer_portfolio;
-          if (portfolio) {
-            setFormData((prevFormData) => ({
-              ...prevFormData,
-              eventName: portfolio.event_name,
-              themeName: portfolio.theme_name,
-            }));
-          }
-        }
       })
       .catch((error) => {
         console.error('Error fetching events:', error);
       });
-  }, [performer]);
+  }, []);
 
   // Fetch themes based on the selected event name
   useEffect(() => {
@@ -91,40 +94,6 @@ export default function AddBook() {
       });
   }, []);
 
-
-  useEffect(() => {
-    if (echo) {
-        const channel = echo.channel("bookings"); // Correct channel name 'bookings'
-        channel.listen(".BookingUpdated", (data) => { // Correct event name 'BookingUpdated'
-            setBookings((prevBookings) => {
-                // Handle state update for real-time changes.
-                const bookingIndex = prevBookings.findIndex(
-                    (booking) => booking.id === data.booking.id
-                );
-  
-                if (bookingIndex !== -1) {
-                    const updatedBookings = [...prevBookings];
-                    updatedBookings[bookingIndex] = {
-                        ...updatedBookings[bookingIndex],
-                        ...data.booking,
-                    };
-                    return updatedBookings;
-                }
-  
-                return [...prevBookings, data.booking];
-            });
-  
-            toast.info(`Booking ${data.booking.status.toLowerCase()} successfully!`);
-        });
-  
-        return () => {
-            channel.stopListening(".BookingUpdated");
-        };
-    }
-  }, [echo]);
-  
-  
-
   // Fetch barangays based on selected municipality
   useEffect(() => {
     if (formData.municipalityName) {
@@ -143,6 +112,50 @@ export default function AddBook() {
     }
   }, [formData.municipalityName, municipalities]);
 
+  // Fetch unavailable and pending dates for all selected performers
+  useEffect(() => {
+    const fetchUnavailableAndPendingDates = async () => {
+        const unavailableDatesList = [];
+        const pendingDatesList = [];
+
+        for (const performer of performers) {
+            try {
+                // Fetch unavailable dates
+                const unavailableResponse = await axiosClient.get(`/performers/${performer.performer_portfolio.id}/unavailable-dates`);
+                if (unavailableResponse.data && unavailableResponse.data.unavailableDates) {
+                    unavailableResponse.data.unavailableDates.forEach(date => {
+                        unavailableDatesList.push({
+                            performerName: `${performer.name} ${performer.lastname}`,
+                            date: dayjs.tz(date, 'Asia/Manila').format('YYYY-MM-DD'),
+                        });
+                    });
+                }
+
+                // Fetch pending booking dates
+                const pendingResponse = await axiosClient.get(`/performers/${performer.performer_portfolio.id}/performerPendingDates`);
+                if (pendingResponse.data && pendingResponse.data.pendingBookingDates) {
+                    pendingResponse.data.pendingBookingDates.forEach(date => {
+                        pendingDatesList.push({
+                            performerName: `${performer.name} ${performer.lastname}`,
+                            date: dayjs.tz(date, 'Asia/Manila').format('YYYY-MM-DD'),
+                        });
+                    });
+                }
+
+            } catch (error) {
+                console.error(`Error fetching dates for performer ${performer.name}:`, error);
+            }
+        }
+
+        setUnavailableDates(unavailableDatesList);
+        setPendingDates(pendingDatesList);
+    };
+
+    if (performers.length > 0) {
+        fetchUnavailableAndPendingDates();
+    }
+}, [performers]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prevFormData) => ({
@@ -151,40 +164,10 @@ export default function AddBook() {
     }));
   };
 
-  const handleEventChange = (e) => {
-    setFormData((prevFormData) => ({
-      ...prevFormData,
-      eventName: e.target.value,
-      themeName: '', // Reset theme when a new event is selected
-    }));
-  };
-
-  const handleThemeChange = (e) => {
-    setFormData((prevFormData) => ({
-      ...prevFormData,
-      themeName: e.target.value,
-    }));
-  };
-
-  const handleMunicipalityChange = (e) => {
-    const municipalityName = e.target.value;
-    setFormData((prevFormData) => ({
-      ...prevFormData,
-      municipalityName,
-      barangayName: '', // Reset barangay when a new municipality is selected
-    }));
-  };
-
-  const handleBarangayChange = (e) => {
-    const barangayName = e.target.value;
-    setFormData((prevFormData) => ({
-      ...prevFormData,
-      barangayName,
-    }));
-  };
-
   // Handle modal open
   const handleOpenModal = () => {
+    const cost = performers.reduce((acc, performer) => acc + (performer.performer_portfolio.rate || 0), 0);
+    setTotalCost(cost);
     setIsModalOpen(true);
   };
 
@@ -199,15 +182,18 @@ export default function AddBook() {
     navigate('/customer');
   };
 
-  // Handle confirmation from modal
+  // Handle booking confirmation for multiple performers
   const handleConfirmBooking = async () => {
-    setIsModalOpen(false); // Close the confirmation modal
+    setIsModalOpen(false);
     setIsSubmitting(true);
 
     try {
-      // Submit the booking request
-      const response = await axiosClient.post('/bookings', {
-        performer_id: formData.performerId,
+      // Create an array of performer IDs
+      const performerIds = performers.map((performer) => performer.performer_portfolio.id);
+
+      // Submit a single booking request with all performer IDs
+      await axiosClient.post('/bookings', {
+        performer_ids: performerIds,
         event_name: formData.eventName,
         theme_name: formData.themeName,
         start_date: formData.startDate,
@@ -218,66 +204,89 @@ export default function AddBook() {
         notes: formData.customerNotes,
       });
 
-      setIsSuccessModalOpen(true); // Show success modal after booking
+      setIsSuccessModalOpen(true);
     } catch (error) {
-      console.error('Error booking performer:', error);
-      if (error.response) {
-        if (error.response.status === 409 && error.response.data.error) {
-          toast.error(`Booking Error: ${error.response.data.error}`);
-        } else if (error.response.data.errors) {
-          toast.error(Object.values(error.response.data.errors).flat().join(', '));
-        } else {
-          toast.error('There was an error booking the performer. Please check your data and try again.');
-        }
+      console.error('Error booking performers:', error);
+      if (error.response && error.response.data.error) {
+        toast.error(
+          Array.isArray(error.response.data.error)
+            ? error.response.data.error.join(', ')
+            : error.response.data.error
+        );
       } else {
-        toast.error('An unknown error occurred.');
+        toast.error('There was an error booking the performers. Please check your data and try again.');
       }
     } finally {
-      setIsSubmitting(false); // Re-enable the button
+      setIsSubmitting(false);
     }
   };
 
-  
+  // Calendar tile content to highlight unavailable dates and pending dates
+  const tileContent = ({ date, view }) => {
+    if (view === 'month') {
+      const formattedDate = dayjs.tz(date, 'Asia/Manila').format('YYYY-MM-DD');
+
+      const unavailablePerformers = unavailableDates.filter(ud => ud.date === formattedDate);
+      const pendingPerformers = pendingDates.filter(pd => pd.date === formattedDate);
+
+      if (unavailablePerformers.length > 0) {
+        return (
+          <Tooltip title={unavailablePerformers.map(ud => ud.performerName).join(', ')}>
+            <div style={{ backgroundColor: 'rgba(255, 0, 0, 0.5)', borderRadius: '50%', width: '100%', height: '100%' }} />
+          </Tooltip>
+        );
+      } else if (pendingPerformers.length > 0) {
+        return (
+          <Tooltip title={pendingPerformers.map(pd => pd.performerName).join(', ')}>
+            <div style={{ backgroundColor: 'rgba(0, 0, 255, 0.5)', borderRadius: '50%', width: '100%', height: '100%' }} />
+          </Tooltip>
+        );
+      }
+    }
+    return null;
+  };
 
   return (
     <div className="container mx-auto p-6">
       <Box sx={{ maxWidth: 800, mx: 'auto', mt: 4 }}>
-        <Card sx={{ mb: 4 }}>
-          <CardContent sx={{ display: 'flex', alignItems: 'center' }}>
+      {performers.length > 0 && performers.map((performer, index) => (
+    <Card key={index} sx={{ mb: 4 }}>
+        <CardContent sx={{ display: 'flex', alignItems: 'center' }}>
             <Avatar
-              src={
-                performer?.image_profile
-                  ? `http://192.168.1.23:8000/storage/${performer.image_profile}`
-                  : ''
-              }
-              alt={performer?.name || ''}
-              sx={{ width: 100, height: 100, mr: 3 }}
+                src={
+                    performer?.image_profile
+                        ? `http://192.168.254.107:8000/storage/${performer.image_profile}`
+                        : ''
+                }
+                alt={performer?.name || ''}
+                sx={{ width: 100, height: 100, mr: 3 }}
             />
             <Box>
-              <Typography variant="h5">{performer?.name}</Typography>
-              <Typography variant="body1">
-                <strong>Talent:</strong> {performer?.performer_portfolio?.talent_name}
-              </Typography>
-              <Typography variant="body1">
-                <strong>Rate:</strong> {performer?.performer_portfolio?.rate} TCoins
-              </Typography>
-              <Typography variant="body1">
-                <strong>Location:</strong> {performer?.performer_portfolio?.location}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <Typography variant="body1" sx={{ mr: 1 }}>
-                  <strong>Rating:</strong>
+                <Typography variant="h5">{performer?.name}</Typography>
+                <Typography variant="body1">
+                    <strong>Talent:</strong> {performer?.performer_portfolio?.talent_name}
                 </Typography>
-                <Rating
-                  value={Number(performer?.performer_portfolio?.average_rating) || 0}
-                  precision={0.5}
-                  readOnly
-                />
-              </Box>
+                <Typography variant="body1">
+                    <strong>Rate:</strong> {performer?.performer_portfolio?.rate} TCoins
+                </Typography>
+                <Typography variant="body1">
+                    <strong>Location:</strong> {performer?.performer_portfolio?.location}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                    <Typography variant="body1" sx={{ mr: 1 }}>
+                        <strong>Rating:</strong>
+                    </Typography>
+                    <Rating
+                        value={Number(performer?.performer_portfolio?.average_rating) || 0}
+                        precision={0.5}
+                        readOnly
+                    />
+                </Box>
             </Box>
-          </CardContent>
-        </Card>
-
+        </CardContent>
+    </Card>
+))}
+      
         <form onSubmit={(e) => {
           e.preventDefault();
           handleOpenModal();
@@ -291,13 +300,13 @@ export default function AddBook() {
               id="event_name"
               name="eventName"
               value={formData.eventName}
-              onChange={handleEventChange}
+              onChange={handleInputChange}
               className="w-full border border-gray-300 px-3 py-2 rounded-md"
               required
             >
               <option value="">Select Event</option>
               {events.map((event) => (
-                <option key={event.name} value={event.name}>
+                <option key={event.id} value={event.name}>
                   {event.name}
                 </option>
               ))}
@@ -313,13 +322,13 @@ export default function AddBook() {
               id="theme_name"
               name="themeName"
               value={formData.themeName}
-              onChange={handleThemeChange}
+              onChange={handleInputChange}
               className="w-full border border-gray-300 px-3 py-2 rounded-md"
               required
             >
               <option value="">Select Theme</option>
               {themes.map((theme) => (
-                <option key={theme.name} value={theme.name}>
+                <option key={theme.id} value={theme.name}>
                   {theme.name}
                 </option>
               ))}
@@ -332,13 +341,13 @@ export default function AddBook() {
             <select
               name="municipalityName"
               value={formData.municipalityName}
-              onChange={handleMunicipalityChange}
+              onChange={handleInputChange}
               className="w-full px-3 py-2 border rounded"
               required
             >
               <option value="">Select Municipality</option>
               {municipalities.map((municipality) => (
-                <option key={municipality.name} value={municipality.name}>
+                <option key={municipality.id} value={municipality.name}>
                   {municipality.name}
                 </option>
               ))}
@@ -350,21 +359,27 @@ export default function AddBook() {
             <select
               name="barangayName"
               value={formData.barangayName}
-              onChange={handleBarangayChange}
+              onChange={handleInputChange}
               className="w-full px-3 py-2 border rounded"
               required
               disabled={!formData.municipalityName}
             >
               <option value="">Select Barangay</option>
               {barangays.map((barangay) => (
-                <option key={barangay.name} value={barangay.name}>
+                <option key={barangay.id} value={barangay.name}>
                   {barangay.name}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Other Booking Information */}
+          {/* Calendar Display for Unavailable Dates and Pending Bookings */}
+          <div className="mb-4">
+            <Typography variant="h6">Unavailable Dates and Pending Bookings</Typography>
+            <Calendar tileContent={tileContent} />
+          </div>
+
+          {/* Booking Information */}
           <label className="block text-gray-700">Start Date: <span className="text-red-500">*</span></label>
           <TextField
             name="startDate"
@@ -430,8 +445,7 @@ export default function AddBook() {
             Confirm Booking
           </Typography>
           <Typography sx={{ mt: 2 }}>
-            You are about to book <strong>{performer?.name}</strong> at the rate of{' '}
-            <strong>{performer?.performer_portfolio?.rate} TCoins</strong>.
+            You are about to book {performers.length} performer(s) for a total cost of <strong>{totalCost} TCoins</strong>.
           </Typography>
           <Typography sx={{ mt: 2 }}>
             Are you sure you want to proceed?
@@ -466,7 +480,7 @@ export default function AddBook() {
             Booking Successful
           </Typography>
           <Typography sx={{ mt: 2 }}>
-            Your booking for <strong>{performer?.name}</strong> has been successfully confirmed.
+            Your booking has been successfully confirmed.
           </Typography>
           <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
             <Button variant="contained" color="primary" onClick={handleCloseSuccessModal}>

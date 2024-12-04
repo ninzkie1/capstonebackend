@@ -40,6 +40,8 @@ import PendingPerformer from './views/PendingPerformer';
 import NotFound from './views/NotFound';
 import PasswordReset from './views/PasswordReset';
 import AboutUs from './views/AboutUs';
+import BookingClient from './views/BookingClient';
+import ChatApplicants from './views/ChatApplicants';
 
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -98,6 +100,11 @@ const router = createBrowserRouter([
       {
         path: 'chat',
         element: <Messages />
+      },
+      {
+        path: 'ChatApplicants',
+        element: <ChatApplicants/>
+
       },
       {
         path: 'post',
@@ -170,6 +177,10 @@ const router = createBrowserRouter([
       {
         path: 'Wallet',
         element: <Walletclient/>
+      },
+      {
+        path: 'BookingClient',
+        element: <BookingClient/>
       }
     ]
   },

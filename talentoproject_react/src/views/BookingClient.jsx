@@ -13,36 +13,41 @@ import {
   Button,
   useMediaQuery,
 } from "@mui/material";
-import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
-export default function Applications() {
-  const [applications, setApplications] = useState([]);
+export default function BookingClient() {
+  const [transactions, setTransactions] = useState([]);
   const isMobile = useMediaQuery("(max-width:600px)");
 
   useEffect(() => {
-    fetchApplications();
+    fetchTransactions();
   }, []);
 
-  const fetchApplications = async () => {
+  const fetchTransactions = async () => {
     try {
-      const response = await axios.get("/getApplicants", {
+      const response = await axios.get("/client-trans", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
-      setApplications(response.data);
+
+      const filteredTransactions = response.data.data.filter(
+        (transaction) =>
+          transaction.transaction_type === "Waiting for Approval" &&
+          transaction.status === "PENDING"
+      );
+      setTransactions(filteredTransactions);
     } catch (error) {
-      console.error("Error fetching applications:", error);
-      toast.error("Failed to load applications.");
+      console.error("Error fetching transactions:", error);
+      toast.error("Failed to load transactions.");
     }
   };
 
-  const handleApprove = async (applicationId) => {
+  const handleApprove = async (transactionId) => {
     try {
       const response = await axios.put(
-        `/applications/${applicationId}/approve`,
+        `/transactions/${transactionId}/approve`,
         {},
         {
           headers: {
@@ -51,23 +56,23 @@ export default function Applications() {
         }
       );
       if (response.status === 200) {
-        toast.success("Application approved.");
-        fetchApplications();
+        toast.success("Transaction approved.");
+        fetchTransactions();
       } else {
-        toast.error("Failed to approve application. Unexpected response.");
+        toast.error("Failed to approve transaction. Unexpected response.");
       }
     } catch (error) {
-      console.error("Error approving application:", error.response || error);
+      console.error("Error approving transaction:", error.response || error);
       toast.error(
-        error.response?.data?.error || "Failed to approve application."
+        error.response?.data?.error || "Failed to approve transaction."
       );
     }
   };
 
-  const handleReject = async (applicationId) => {
+  const handleDecline = async (transactionId) => {
     try {
       const response = await axios.put(
-        `/applications/${applicationId}/reject`,
+        `/transactions/${transactionId}/decline`,
         {},
         {
           headers: {
@@ -76,15 +81,15 @@ export default function Applications() {
         }
       );
       if (response.status === 200) {
-        toast.success("Application rejected.");
-        fetchApplications();
+        toast.success("Transaction declined.");
+        fetchTransactions();
       } else {
-        toast.error("Failed to reject application. Unexpected response.");
+        toast.error("Failed to decline transaction. Unexpected response.");
       }
     } catch (error) {
-      console.error("Error rejecting application:", error.response || error);
+      console.error("Error declining transaction:", error.response || error);
       toast.error(
-        error.response?.data?.error || "Failed to reject application."
+        error.response?.data?.error || "Failed to decline transaction."
       );
     }
   };
@@ -110,7 +115,7 @@ export default function Applications() {
           mb: 2,
         }}
       >
-        Performer Applications
+        Transactions Waiting for Approval
       </Typography>
       <TableContainer
         component={Paper}
@@ -122,10 +127,10 @@ export default function Applications() {
       >
         {isMobile ? (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {applications.length > 0 ? (
-              applications.map((application) => (
+            {transactions.length > 0 ? (
+              transactions.map((transaction) => (
                 <Box
-                  key={application.id}
+                  key={transaction.id}
                   sx={{
                     padding: 2,
                     borderRadius: "8px",
@@ -134,22 +139,25 @@ export default function Applications() {
                   }}
                 >
                   <Typography>
-                    <strong>Performer Name:</strong> {application.performer_name}
+                    <strong>Performer:</strong>{" "}
+                    {transaction.performer_name || "N/A"}
                   </Typography>
                   <Typography>
-                    <strong>Posts Event:</strong> {application.posts_event}
+                    <strong>Amount:</strong> ₱
+                    {parseFloat(transaction.amount).toFixed(2)}
                   </Typography>
                   <Typography>
-                    <strong>Posts Theme:</strong> {application.posts_theme}
-                  </Typography>
-                  <Typography>
-                    <strong>Talent:</strong> {application.performer_talent}
-                  </Typography>
-                  <Typography>
-                    <strong>Requested On:</strong>{" "}
-                    {dayjs(application.requested_on).format(
-                      "MMM DD, YYYY h:mm A"
-                    )}
+                    <strong>Date:</strong>{" "}
+                    {transaction.start_date
+                      ? new Date(transaction.start_date).toLocaleDateString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          }
+                        )
+                      : "N/A"}
                   </Typography>
                   <Typography>
                     <strong>Status:</strong>{" "}
@@ -162,7 +170,7 @@ export default function Applications() {
                         fontSize: "0.8em",
                       }}
                     >
-                      {application.status}
+                      {transaction.status}
                     </span>
                   </Typography>
                   <Box
@@ -176,7 +184,7 @@ export default function Applications() {
                       variant="contained"
                       color="success"
                       size="small"
-                      onClick={() => handleApprove(application.id)}
+                      onClick={() => handleApprove(transaction.id)}
                     >
                       Approve
                     </Button>
@@ -184,42 +192,49 @@ export default function Applications() {
                       variant="contained"
                       color="error"
                       size="small"
-                      onClick={() => handleReject(application.id)}
+                      onClick={() => handleDecline(transaction.id)}
                     >
-                      Reject
+                      Decline
                     </Button>
                   </Box>
                 </Box>
               ))
             ) : (
-              <Typography align="center">No applications found.</Typography>
+              <Typography align="center">No transactions found.</Typography>
             )}
           </Box>
         ) : (
           <Table stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell>Performer Name</TableCell>
-                <TableCell>Posts Event</TableCell>
-                <TableCell>Posts Theme</TableCell>
-                <TableCell>Talent</TableCell>
-                <TableCell>Requested On</TableCell>
+                <TableCell>Performer</TableCell>
+                <TableCell>Amount</TableCell>
+                <TableCell>Date of Booking</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {applications.length > 0 ? (
-                applications.map((application) => (
-                  <TableRow key={application.id}>
-                    <TableCell>{application.performer_name}</TableCell>
-                    <TableCell>{application.posts_event}</TableCell>
-                    <TableCell>{application.posts_theme}</TableCell>
-                    <TableCell>{application.performer_talent}</TableCell>
+              {transactions.length > 0 ? (
+                transactions.map((transaction) => (
+                  <TableRow key={transaction.id}>
                     <TableCell>
-                      {dayjs(application.requested_on).format(
-                        "MMM DD, YYYY h:mm A"
-                      )}
+                      {transaction.performer_name || "Performer Name"}
+                    </TableCell>
+                    <TableCell>
+                      ₱{parseFloat(transaction.amount).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      {transaction.start_date
+                        ? new Date(transaction.start_date).toLocaleDateString(
+                            "en-US",
+                            {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            }
+                          )
+                        : "N/A"}
                     </TableCell>
                     <TableCell>
                       <span
@@ -231,7 +246,7 @@ export default function Applications() {
                           fontSize: "0.8em",
                         }}
                       >
-                        {application.status}
+                        {transaction.status}
                       </span>
                     </TableCell>
                     <TableCell>
@@ -240,7 +255,7 @@ export default function Applications() {
                           variant="contained"
                           color="success"
                           size="small"
-                          onClick={() => handleApprove(application.id)}
+                          onClick={() => handleApprove(transaction.id)}
                         >
                           Approve
                         </Button>
@@ -248,9 +263,9 @@ export default function Applications() {
                           variant="contained"
                           color="error"
                           size="small"
-                          onClick={() => handleReject(application.id)}
+                          onClick={() => handleDecline(transaction.id)}
                         >
-                          Reject
+                          Decline
                         </Button>
                       </Box>
                     </TableCell>
@@ -258,8 +273,8 @@ export default function Applications() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} align="center">
-                    No applications found.
+                  <TableCell colSpan={5} align="center">
+                    No transactions found.
                   </TableCell>
                 </TableRow>
               )}

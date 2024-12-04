@@ -3,6 +3,8 @@
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminWalletController;
+use App\Http\Controllers\ApplicantsController;
+use App\Http\Controllers\ApplicationsController;
 use App\Http\Controllers\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -21,6 +23,7 @@ use App\Http\Controllers\TCoinController;
 use App\Http\Controllers\UnavailableDateController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WalletController;
+use App\Models\Applicants;
 use App\Models\Transaction;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
@@ -67,6 +70,7 @@ Route::get('/users/{id}', [UserController::class, 'getUser']);
 
 
 
+
 Route::middleware('auth:sanctum')->group(function () {
     // Route::get('/performer', [PerformerController::class, 'index']);
      
@@ -108,7 +112,8 @@ Route::get('/users', [UserController::class, 'index']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/posts', [CustomerController::class, 'index']); // gawas tanan post if naka login ra
     Route::post('/posts', [CustomerController::class, 'store']); // add post
-
+    Route::post('/posts/{postId}/apply', [ApplicationsController::class, 'apply']);
+    Route::get('/getApplicants', [ApplicationsController::class, 'getApplications']);
     Route::put('/posts/{id}', [CustomerController::class, 'update']); // Update a post
     Route::delete('/posts/{id}', [CustomerController::class, 'destroy']); // Delete a post
     Route::get('/events', [EventController::class, 'getEvents']);
@@ -140,14 +145,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/wallet-info', [AdminWalletController::class, 'show']); // Get wallet information of the admin
     Route::get('/notifications', [WalletController::class, 'getNotifications']);
     Route::delete('/delete-notifi/{id}', [WalletController::class, 'deleteNotification']);
+    //pending booking for performer
     Route::get('/performers/{performerId}/bookings', [BookingController::class, 'getBookingsForPerformer']);//for booking request in the performer
     Route::get('/performers/{performerId}/unavailable-dates', [UnavailableDateController::class, 'index']);
     Route::post('/unavailable-dates', [UnavailableDateController::class, 'store']);
     Route::put('/bookings/{id}/accept', [BookingController::class, 'acceptBooking']);
     Route::put('/bookings/{id}/decline', [BookingController::class, 'declineBooking']);
-    Route::post('/bookPerformer', [BookingController::class, 'bookPerformer']);
+    // Route::post('/bookPerformer', [BookingController::class, 'bookPerformer']);
     Route::get('/transactions', [TransactionController::class, 'index']); // Fetch all transactions
     Route::get('/performer-trans', [TransactionController::class, 'getPerformerTransactions']);
+    Route::get('/performer/{performerId}/performer-trans', [TransactionController::class, 'getClientPerformerTransactions']);
+    Route::get('/client-trans', [TransactionController::class, 'getClientTransactions']);
     Route::get('/transactions/{id}', [TransactionController::class, 'show']); // Fetch a specific transaction by ID
     Route::post('/transactions', [TransactionController::class, 'store']); // Create a new transaction
     Route::put('/transactions/{id}/approve', [TransactionController::class, 'approveTransaction']);//approve the transaction if the user already satisfied and the performer fullfill the clients booking to release the TalentoCoin
@@ -155,10 +163,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/update-profile', [CustomerController::class, 'updateProfile']);
     Route::get('/client-info', [CustomerController::class, 'getLoggedInClient']);
     Route::post('/profile', [CustomerController::class, 'showProfile']); 
-    Route::get('/accepted-client', [BookingController::class, 'getAcceptedBookingsForPerformer']);
+    // Route::get('/accepted-client', [BookingController::class, 'getAcceptedBookings']);
+    Route::get('/performers/{performerId}/accepted-bookings', [BookingController::class, 'getAcceptedBookingsForPerformer']);
+    Route::get('/performers/{performerId}/declined-bookings', [BookingController::class, 'getDeclinedBookingsForPerformer']);
     Route::get('/can-chat/{clientId}', [ChatController::class, 'canChat']);
     Route::get('/canChatClients', [ChatController::class, 'getClientsWithAcceptedBookings']);
-   
+    Route::get('/canChatPerformer', [ChatController::class, 'canChatPerformer']);
+    Route::get('/getAdmin', [UserController::class, 'getAdmin']);
+    Route::get('/performers/{performerId}/performerPendingDates', [UnavailableDateController::class, 'getPendingBookingDates']);
+    Route::get('/performer/can-chat-applicants', [ChatController::class, 'canChatApplicants']);
+    //get pending bookings for all authenticated users
+    Route::get('/getPendingBookings', [BookingController::class, 'getPendingBookings']);
+
+
+
     
 }); 
 Route::get('/chats', [ChatController::class, 'index']);

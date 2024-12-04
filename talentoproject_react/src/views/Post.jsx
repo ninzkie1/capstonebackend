@@ -15,6 +15,7 @@ import {
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useStateContext } from "../context/contextprovider";
 import { useOutletContext, useNavigate } from "react-router-dom";
+import ChatApplicants from "./ChatApplicants";
 import dayjs from "dayjs";
 
 export default function AdminPost() {
@@ -181,9 +182,29 @@ export default function AdminPost() {
     }
   };
 
-  const handleApply = (postId) => {
-    alert(`Applied for post ID: ${postId}`);
+  const handleApply = async (postId) => {
+    if (!user || user.role !== "performer") {
+      alert("You need to be logged in as a performer to apply.");
+      return;
+    }
+  
+    setLoading(true);
+    try {
+      const response = await axiosClient.post(`/posts/${postId}/apply`);
+      alert(response.data.message);
+      // Optionally, refresh the list or update application status in the UI
+      fetchPosts();
+    } catch (error) {
+      console.error("Error applying for the post:", error);
+      alert(
+        error.response?.data?.message ||
+          "Failed to apply for the post. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
+  
 
   const handleMessage = (postUser) => {
     navigate(`/chat`, { state: { userId: postUser.id } });
@@ -336,24 +357,30 @@ export default function AdminPost() {
 
                 {/* Performer Controls */}
                 {user?.role === "performer" && (
-                  <Box sx={{ mt: 2 }}>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      onClick={() => handleApply(post.id)}
-                      sx={{ mr: 2 }}
-                    >
-                      Apply
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      onClick={() => handleMessage(post.user)}
-                    >
-                      Message
-                    </Button>
-                  </Box>
-                )}
+                      <Box sx={{ mt: 2 }}>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          onClick={() => handleApply(post.id)}
+                          disabled={post.applications?.some(
+                            (app) => app.performer_id === user.performerPortfolioId
+                          )}
+                        >
+                          {post.applications?.some(
+                            (app) => app.performer_id === user.performerPortfolioId
+                          )
+                            ? "Applied"
+                            : "Apply"}
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="secondary"
+                          onClick={() => handleMessage(post.user)}
+                        >
+                          Message
+                        </Button>
+                      </Box>
+                    )}
 
                 {/* Comment Section */}
                 <Box sx={{ mt: 3 }}>
@@ -410,6 +437,11 @@ export default function AdminPost() {
           </Typography>
         )}
       </div>
+      <div className="fixed bottom-6 right-6 z-50">
+               <ChatApplicants/>
+            </div>
     </div>
+    
   );
+
 }

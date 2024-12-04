@@ -335,6 +335,18 @@ public function withdraw(Request $request)
         return response()->json(['message' => 'User not authenticated'], 401);
     }
 
+    // Get the authenticated user
+    $user = Auth::user();
+
+    // Check if the user has enough balance to withdraw
+    if ($validatedData['amount'] > $user->talento_coin_balance) {
+        Log::error("insufficient requested balance for the withdrawal request.", [
+            'requested_amount' => $validatedData['amount'],
+            'available_balance' => $user->talento_coin_balance,
+        ]);
+        return response()->json(['message' => 'You tried to withdraw more than your balance.'], 400);
+    }
+
     // Create new withdraw request
     try {
         $withdrawRequest = WithdrawRequest::create([
@@ -346,14 +358,15 @@ public function withdraw(Request $request)
             'status' => 'PENDING',
         ]);
 
+        // Create a notification for the withdraw request
         Notification::create([
             'user_id' => $userId,
             'type' => 'withdraw',
-            'message' => Auth::user()->name . ' requested a withdrawal of ' . $validatedData['amount'] . ' TalentoCoins.',
+            'message' => $user->name . ' requested a withdrawal of ' . $validatedData['amount'] . ' TalentoCoins.',
         ]);
 
-        // Broadcast the new withdrawal request event
-        // event(new NewWithdrawRequest($withdrawRequest));
+        // Optionally broadcast the new withdrawal request event
+        event(new NewWithdrawRequest($withdrawRequest));
 
         return response()->json([
             'message' => 'Withdraw request submitted successfully.',
@@ -367,6 +380,7 @@ public function withdraw(Request $request)
         ], 500);
     }
 }
+
 
 public function getWithdrawRequests()
 {

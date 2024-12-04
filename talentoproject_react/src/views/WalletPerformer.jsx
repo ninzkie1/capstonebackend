@@ -199,7 +199,7 @@ export default function WalletPerformer() {
   // Handle form submission to process the withdrawal
   const handleWithdrawProcessClick = async () => {
     if (!withdrawInfo.qrCode || !withdrawInfo.accountName || !withdrawInfo.accountNumber || !withdrawInfo.amount) {
-      alert("Please complete all the fields before processing.");
+      toast.error("Please complete all the fields before processing.");
       return;
     }
 
@@ -225,11 +225,19 @@ export default function WalletPerformer() {
         fetchUserBalance(); // Update balance immediately
         fetchRequestHistory();
       } else {
-        alert("Failed to submit withdrawal request. Please try again.");
+        toast.error("Failed to submit withdrawal request. Please try again.");
       }
     } catch (error) {
-      console.error("Error processing withdrawal:", error);
-      alert("Failed to submit withdrawal request. Please try again.");
+      if (error.response && error.response.status === 400) {
+        if (error.response.data.message === "You tried to withdraw more than your balance.") {
+          toast.error("You tried to withdraw more than your balance.");
+        } else {
+          toast.error(error.response.data.message || "Failed to submit withdrawal request. Please try again.");
+        }
+      } else {
+        console.error("Error processing withdrawal:", error);
+        toast.error("Failed to submit withdrawal request. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }

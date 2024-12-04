@@ -14,7 +14,6 @@ return new class extends Migration
             Schema::create('bookings', function (Blueprint $table) {
                 $table->id(); 
                 $table->unsignedBigInteger('client_id');  
-                $table->unsignedBigInteger('performer_id');  
                 $table->string('event_name');     
                 $table->string('theme_name');    
                 $table->date('start_date');  
@@ -27,7 +26,7 @@ return new class extends Migration
                 $table->timestamps();  
     
                 // Foreign Key Constraints
-                $table->foreign('performer_id')->references('id')->on('performer_portfolios')->onDelete('cascade');
+                
                 $table->foreign('client_id')->references('id')->on('users')->onDelete('cascade');
             });
         }

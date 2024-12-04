@@ -25,7 +25,10 @@ class PerformerPortfolio extends Model
     public function user() {
         return $this->belongsTo(User::class, 'performer_id'); 
     }
-
+    public function performer()
+    {
+        return $this->belongsTo(User::class, 'performer_id');
+    }
     public function feedback()
     {
         return $this->hasMany(Feedback::class, 'performer_id');
@@ -39,5 +42,25 @@ class PerformerPortfolio extends Model
     {
         return $this->hasMany(Highlight::class, 'portfolio_id');
     }
-    
+    public function bookings()
+    {
+        return $this->belongsToMany(Booking::class, 'booking_performer', 'performer_id', 'booking_id')
+            ->withPivot('status')
+            ->withTimestamps();
+    }
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'performer_id');
+    }
+    public function talents()
+    {
+        return $this->hasMany(Talent::class, 'performer_id', 'performer_id');
+    }
+    public function applications()
+{
+    return $this->hasMany(Applications::class, 'performer_id');
+}
+
+
+
 }

@@ -12,6 +12,7 @@ class Transaction extends Model
     protected $fillable = [
         'user_id',
         'booking_id',
+        'performer_id',
         'transaction_type',
         'amount',
         'balance_before',

@@ -16,7 +16,8 @@ return new class extends Migration
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id'); // Foreign key for user
-            $table->unsignedBigInteger('booking_id')->nullable(); //foreign key sa booking
+            $table->unsignedBigInteger('performer_id');
+            $table->unsignedBigInteger('booking_id'); //foreign key sa booking
             $table->string('transaction_type'); // Deposit, Withdraw, Subscription, P2P
             $table->decimal('amount', 10, 2);
             $table->decimal('balance_before', 10, 2)->nullable();
@@ -28,6 +29,7 @@ return new class extends Migration
 
             // Foreign key constraints
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('performer_id')->references('id')->on('performer_portfolios')->onDelete('cascade');
             $table->foreign('booking_id')->references('id')->on('bookings')->onDelete('cascade');
         });
     }

@@ -73,12 +73,7 @@ export default function PerformerApplications() {
                                 <h3 className="text-lg font-semibold">
                                     {app.name} {app.lastname}
                                 </h3>
-                                <p>
-                                    <strong>Talent:</strong> {app.talent_name}
-                                </p>
-                                <p>
-                                    <strong>Location:</strong> {app.location}
-                                </p>
+                                
                                 <div className="mt-4 flex flex-wrap gap-2">
                                     <Button
                                         variant="contained"
@@ -130,12 +125,7 @@ export default function PerformerApplications() {
                                 <h3 className="text-lg font-semibold">
                                     {app.name} {app.lastname}
                                 </h3>
-                                <p>
-                                    <strong>Talent:</strong> {app.talent_name}
-                                </p>
-                                <p>
-                                    <strong>Location:</strong> {app.location}
-                                </p>
+                               
                                 <div className="mt-4 flex flex-wrap gap-2">
                                     <Button
                                         variant="contained"
@@ -171,12 +161,7 @@ export default function PerformerApplications() {
                                 <h3 className="text-lg font-semibold">
                                     {app.name} {app.lastname}
                                 </h3>
-                                <p>
-                                    <strong>Talent:</strong> {app.talent_name}
-                                </p>
-                                <p>
-                                    <strong>Location:</strong> {app.location}
-                                </p>
+                               
                                 <div className="mt-4 flex flex-wrap gap-2">
                                     <Button
                                         variant="contained"

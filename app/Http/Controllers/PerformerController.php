@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use App\Models\Event;
 use App\Models\Theme;
+use App\Models\Talent;
 class PerformerController extends Controller
 {
     // Show performer portfolio details
@@ -103,19 +104,16 @@ class PerformerController extends Controller
     // Update the performer portfolio
     public function update(Request $request, $userId)
     {
-        // Step 1: Find the user by ID
         $user = User::find($userId);
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);
         }
     
-        // Step 2: Fetch the performer's portfolio by user/performer ID
         $portfolio = PerformerPortfolio::where('performer_id', $userId)->first();
         if (!$portfolio) {
             return response()->json(['message' => 'Portfolio not found'], 404);
         }
     
-        // Step 3: Validate incoming request data
         $validatedData = $request->validate([
             'event_name' => 'nullable|string',
             'theme_name' => 'nullable|string',
@@ -126,26 +124,32 @@ class PerformerController extends Controller
             'phone' => 'nullable|string|max:20',
             'experience' => 'nullable|numeric',
             'genres' => 'nullable|string',
-            'performer_type' => 'nullable|string',  
+            'performer_type' => 'nullable|string',
         ]);
     
-        // Step 4: Update the portfolio fields using validated data
-        $portfolio->update([
-            'event_name' => $validatedData['event_name'],
-            'theme_name' => $validatedData['theme_name'],
-            'talent_name' => $validatedData['talent_name'],
-            'location' => $validatedData['location'],
-            'description' => $validatedData['description'],
-            'rate' => $validatedData['rate'],
-            'phone' => $validatedData['phone'],
-            'experience' => $validatedData['experience'],
-            'genres' => $validatedData['genres'],
-            'performer_type' => $validatedData['performer_type'],
-            
-        ]);
+        $portfolio->update($validatedData);
     
-        return response()->json(['message' => 'Portfolio updated successfully', 'portfolio' => $portfolio]);
+        if (!empty($validatedData['talent_name'])) {
+            $existingTalent = Talent::where('performer_id', $portfolio->id)
+                ->where('talent_name', $validatedData['talent_name'])
+                ->first();
+    
+            if (!$existingTalent) {
+                Log::info('Adding new talent', [
+                    'performer_id' => $portfolio->id,
+                    'talent_name' => $validatedData['talent_name'],
+                ]);
+    
+                Talent::create([
+                    'performer_id' => $portfolio->id,
+                    'talent_name' => $validatedData['talent_name'],
+                ]);
+            }
+        }
+    
+        return response()->json(['message' => 'Portfolio updated successfully']);
     }
+    
     
 
     // Update performer profile image

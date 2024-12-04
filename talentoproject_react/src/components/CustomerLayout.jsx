@@ -74,7 +74,7 @@ export default function CustomerLayout() {
         backgroundSize: "cover",
       }}
     >
-      <div className="absolute inset-0 bg-black opacity-50"></div>
+     
 
       {/* Header */}
       <AppBar position="fixed" className="!bg-gradient-to-r from-yellow-500 to-yellow-700 shadow-none top-0 left-0 w-full z-50">
@@ -140,53 +140,67 @@ export default function CustomerLayout() {
         </MenuItem>
       </Menu>
 
-      {/* Mobile Drawer */}
-      <Drawer anchor="right" open={drawerOpen} onClose={toggleDrawer(false)}>
-        <List className="bg-yellow-600">
-          <ListItem button onClick={() => navigate("/")} className="text-blue-900">
-            <ListItemIcon>
-              <HomeIcon />
-            </ListItemIcon>
-            <ListItemText primary="Home" />
-          </ListItem>
-          <ListItem button onClick={() => navigate("/dashboard")} className="text-blue-900">
-            <ListItemIcon>
-              <DashboardIcon />
-            </ListItemIcon>
-            <ListItemText primary="Dashboard" />
-          </ListItem>
-          <ListItem button onClick={() => navigate("/posts")} className="text-blue-900">
-            <ListItemIcon>
-              <PostIcon />
-            </ListItemIcon>
-            <ListItemText primary="Post" />
-          </ListItem>
-          <ListItem button onClick={() => navigate("/wallet")} className="text-blue-900">
-            <ListItemIcon>
-              <WalletIcon />
-            </ListItemIcon>
-            <ListItemText primary="Wallet" />
-          </ListItem>
-          <ListItem button onClick={handleEditProfile} className="text-blue-900">
-            <ListItemIcon>
-              <ProfileIcon />
-            </ListItemIcon>
-            <ListItemText primary="View Profile" />
-          </ListItem>
-          <ListItem button onClick={handleMessages} className="text-blue-900">
-            <ListItemIcon>
-              <MessageIcon />
-            </ListItemIcon>
-            <ListItemText primary="Messages" />
-          </ListItem>
-          <ListItem button onClick={handleLogout} className="text-blue-900">
-            <ListItemIcon>
-              <LogoutIcon />
-            </ListItemIcon>
-            <ListItemText primary="Logout" />
-          </ListItem>
-        </List>
-      </Drawer>
+                {/* Mobile Drawer */}
+                <Drawer
+              anchor="right"
+              open={drawerOpen}
+              onClose={toggleDrawer(false)}
+              sx={{
+                '& .MuiDrawer-paper': {
+                  width: isMobile ? '40%' : 250,
+                  height: '100vh', // Set height to full viewport height
+                  boxSizing: 'border-box',
+                  backgroundColor: '#f59e0b', // Consistent yellow color
+                  color: '#FFFFFF', // Set text color for readability
+                },
+              }}
+            >
+              <List sx={{ height: '100%', padding: 0 }}>
+                <ListItem button onClick={() => navigate("/")} sx={{ color: '#FFFFFF' }}>
+                  <ListItemIcon>
+                    <HomeIcon style={{ color: '#FFFFFF' }} />
+                  </ListItemIcon>
+                  <ListItemText primary="Home" />
+                </ListItem>
+                <ListItem button onClick={() => navigate("/dashboard")} sx={{ color: '#FFFFFF' }}>
+                  <ListItemIcon>
+                    <DashboardIcon style={{ color: '#FFFFFF' }} />
+                  </ListItemIcon>
+                  <ListItemText primary="Dashboard" />
+                </ListItem>
+                <ListItem button onClick={() => navigate("/posts")} sx={{ color: '#FFFFFF' }}>
+                  <ListItemIcon>
+                    <PostIcon style={{ color: '#FFFFFF' }} />
+                  </ListItemIcon>
+                  <ListItemText primary="Post" />
+                </ListItem>
+                <ListItem button onClick={() => navigate("/wallet")} sx={{ color: '#FFFFFF' }}>
+                  <ListItemIcon>
+                    <WalletIcon style={{ color: '#FFFFFF' }} />
+                  </ListItemIcon>
+                  <ListItemText primary="Wallet" />
+                </ListItem>
+                <ListItem button onClick={handleEditProfile} sx={{ color: '#FFFFFF' }}>
+                  <ListItemIcon>
+                    <ProfileIcon style={{ color: '#FFFFFF' }} />
+                  </ListItemIcon>
+                  <ListItemText primary="View Profile" />
+                </ListItem>
+                <ListItem button onClick={() => navigate("/messages")} sx={{ color: '#FFFFFF' }}>
+                  <ListItemIcon>
+                    <MessageIcon style={{ color: '#FFFFFF' }} />
+                  </ListItemIcon>
+                  <ListItemText primary="Messages" />
+                </ListItem>
+                <ListItem button onClick={handleLogout} sx={{ color: '#FFFFFF' }}>
+                  <ListItemIcon>
+                    <LogoutIcon style={{ color: '#FFFFFF' }} />
+                  </ListItemIcon>
+                  <ListItemText primary="Logout" />
+                </ListItem>
+              </List>
+            </Drawer>
+
 
       {/* Main Content */}
       <main className="flex-1 bg-transparent px-0 py-0 mt-28">

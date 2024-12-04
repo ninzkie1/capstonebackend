@@ -20,7 +20,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useStateContext } from "../context/contextprovider";
 import echo from "../echo";
 
-export default function ChatCustomer() {
+export default function ChatApplicants() {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const isMediumScreen = useMediaQuery(theme.breakpoints.down("md"));
@@ -28,55 +28,38 @@ export default function ChatCustomer() {
   const { user } = useStateContext(); // Get the logged-in user
   const [message, setMessage] = useState(""); // Current message input
   const [messages, setMessages] = useState([]); // Chat messages
-  const [contacts, setContacts] = useState([]); // Contact list
-  const [selectedUser, setSelectedUser] = useState(null); // Selected contact
+  const [applicants, setApplicants] = useState([]); // Contact list for applicants
+  const [selectedApplicant, setSelectedApplicant] = useState(null); // Selected contact
   const [isChatOpen, setIsChatOpen] = useState(false); // Toggle chat window
-  const [isContactSelected, setIsContactSelected] = useState(false); // Contact/chat toggle
   const [isSending, setIsSending] = useState(false); // Sending state
 
-  // Fetch contacts based on user role
+  // Fetch applicants who can chat
   useEffect(() => {
-    const fetchContacts = async () => {
+    const fetchApplicants = async () => {
       try {
-        const [performerResponse, adminResponse] = await Promise.all([
-          axiosClient.get("/canChatPerformer"),
-          axiosClient.get("/getAdmin"),
-        ]);
-
-        let performers = [];
-        let admins = [];
-
-        if (
-          performerResponse?.data?.status === "success" &&
-          Array.isArray(performerResponse.data.data)
-        ) {
-          performers = performerResponse.data.data;
+        const response = await axiosClient.get("/performer/can-chat-applicants");
+        if (response?.data?.status === "success") {
+          setApplicants(response.data.data);
+        } else {
+          console.error("Unexpected response for applicants:", response);
         }
-
-        if (Array.isArray(adminResponse.data)) {
-          admins = adminResponse.data;
-        }
-
-        // Combine performers and admins
-        setContacts([...performers, ...admins]);
       } catch (error) {
-        console.error("Error fetching contacts:", error);
-        setContacts([]);
+        console.error("Error fetching applicants:", error);
       }
     };
 
-    fetchContacts();
-  }, [user.role]);
+    fetchApplicants();
+  }, []);
 
-  // Fetch messages for the selected user
+  // Fetch messages for selected applicant
   useEffect(() => {
     const fetchMessages = async () => {
-      if (selectedUser) {
+      if (selectedApplicant) {
         try {
           const response = await axiosClient.get("/chats", {
             params: {
               user_id: user.id,
-              contact_id: selectedUser.id,
+              contact_id: selectedApplicant.id,
             },
           });
           setMessages(response.data || []);
@@ -85,14 +68,14 @@ export default function ChatCustomer() {
           setMessages([]);
         }
 
+        // Real-time message updates
         echo.channel("chat-channel").listen(".message.sent", (e) => {
           const newMessage = e.chat;
-          setMessages((prev) => {
-            if (!prev.some((msg) => msg.id === newMessage.id)) {
-              return [...prev, newMessage];
-            }
-            return prev;
-          });
+          setMessages((prev) =>
+            prev.some((msg) => msg.id === newMessage.id)
+              ? prev
+              : [...prev, newMessage]
+          );
         });
 
         return () => {
@@ -102,16 +85,16 @@ export default function ChatCustomer() {
     };
 
     fetchMessages();
-  }, [selectedUser, user.id]);
+  }, [selectedApplicant, user.id]);
 
   // Send message
   const handleSendMessage = async () => {
-    if (message.trim() && selectedUser) {
+    if (message.trim() && selectedApplicant) {
       setIsSending(true);
       try {
         await axiosClient.post("/chats", {
           sender_id: user.id,
-          receiver_id: selectedUser.id,
+          receiver_id: selectedApplicant.id,
           message,
         });
         setMessage("");
@@ -123,17 +106,13 @@ export default function ChatCustomer() {
     }
   };
 
-  // Handle user selection
-  const handleUserClick = (contact) => {
+  // Handle applicant selection
+  const handleSelectApplicant = (applicant) => {
     setMessages([]);
-    setSelectedUser(contact);
-    setIsContactSelected(true);
+    setSelectedApplicant(applicant);
   };
 
-  // Back to contacts
-  const handleBackToContacts = () => setIsContactSelected(false);
-
-  // Auto-scroll
+  // Auto-scroll on new messages
   useEffect(() => {
     const chatArea = document.getElementById("chatArea");
     if (chatArea) {
@@ -141,8 +120,12 @@ export default function ChatCustomer() {
     }
   }, [messages]);
 
+  // Handle back button for small screen
+  const handleBackToApplicants = () => setSelectedApplicant(null);
+
   return (
     <div>
+      {/* Chat Toggle Button */}
       <IconButton
         onClick={() => setIsChatOpen((prev) => !prev)}
         sx={{
@@ -158,6 +141,7 @@ export default function ChatCustomer() {
         <ChatIcon />
       </IconButton>
 
+      {/* Chat Window */}
       {isChatOpen && (
         <Box
           sx={{
@@ -173,6 +157,7 @@ export default function ChatCustomer() {
             flexDirection: "column",
           }}
         >
+          {/* Chat Header */}
           <Box
             sx={{
               p: 2,
@@ -183,73 +168,82 @@ export default function ChatCustomer() {
               alignItems: "center",
             }}
           >
-            {isContactSelected ? (
+            {selectedApplicant ? (
               <>
-                <IconButton onClick={handleBackToContacts} sx={{ color: "white" }}>
+                <IconButton onClick={handleBackToApplicants} sx={{ color: "white" }}>
                   <ArrowBackIcon />
                 </IconButton>
-                <Typography variant="h6">{selectedUser.name}</Typography>
+                <Typography variant="h6">{selectedApplicant.name}</Typography>
               </>
             ) : (
-              <Typography variant="h6">Contacts</Typography>
+              <Typography variant="h6">Applicants</Typography>
             )}
             <IconButton sx={{ color: "white" }} onClick={() => setIsChatOpen(false)}>
               <CloseIcon />
             </IconButton>
           </Box>
 
+          {/* Applicant List or Messages */}
           <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
-            {!isContactSelected ? (
-              contacts.length > 0 ? (
-                <List>
-                  {contacts.map((contact) => (
-                    <ListItem
-                      key={contact.id}
-                      button
-                      onClick={() => handleUserClick(contact)}
-                    >
-                      <ListItemAvatar>
-                        <Avatar>{contact.name?.[0] || "U"}</Avatar>
-                      </ListItemAvatar>
-                      <ListItemText primary={contact.name || "Unknown"} />
-                    </ListItem>
-                  ))}
-                </List>
-              ) : (
-                <Typography>No contacts available.</Typography>
-              )
-            ) : (
+            {selectedApplicant ? (
               <div id="chatArea" style={{ maxHeight: "100%", overflowY: "auto" }}>
-                {messages.map((msg, index) => (
-                  <Box
-                    key={index}
-                    sx={{
-                      display: "flex",
-                      mb: 2,
-                      justifyContent:
-                        msg.sender_id === user.id ? "flex-end" : "flex-start",
-                    }}
-                  >
-                    {msg.sender_id !== user.id && (
-                      <Avatar>{selectedUser.name?.[0] || "U"}</Avatar>
-                    )}
+                {messages.length > 0 ? (
+                  messages.map((msg, index) => (
                     <Box
+                      key={index}
                       sx={{
-                        p: 2,
-                        borderRadius: "8px",
-                        bgcolor: msg.sender_id === user.id ? "#e0f7fa" : "#f1f1f1",
+                        display: "flex",
+                        mb: 2,
+                        justifyContent:
+                          msg.sender_id === user.id ? "flex-end" : "flex-start",
                       }}
                     >
-                      <Typography>{msg.message}</Typography>
+                      {msg.sender_id !== user.id && (
+                        <Avatar>{selectedApplicant.name?.[0] || "U"}</Avatar>
+                      )}
+                      <Box
+                        sx={{
+                          p: 2,
+                          borderRadius: "8px",
+                          bgcolor:
+                            msg.sender_id === user.id ? "#e0f7fa" : "#f1f1f1",
+                        }}
+                      >
+                        <Typography>{msg.message}</Typography>
+                      </Box>
                     </Box>
-                  </Box>
-                ))}
+                  ))
+                ) : (
+                  <Typography>No messages yet.</Typography>
+                )}
               </div>
+            ) : (
+              <List>
+                {applicants.length > 0 ? (
+                  applicants.map((applicant) => (
+                    <ListItem
+                      key={applicant.id}
+                      button
+                      onClick={() => handleSelectApplicant(applicant)}
+                    >
+                      <ListItemAvatar>
+                        <Avatar>{applicant.name?.[0] || "U"}</Avatar>
+                      </ListItemAvatar>
+                      <ListItemText primary={applicant.name || "Unknown"} />
+                    </ListItem>
+                  ))
+                ) : (
+                  <Typography>No applicants available.</Typography>
+                )}
+              </List>
             )}
           </Box>
 
-          {isContactSelected && (
-            <Box sx={{ display: "flex", p: 2, borderTop: "1px solid #ccc" }}>
+          {/* Message Input */}
+          {selectedApplicant && (
+            <Box
+              sx={{ display: "flex", p: 2, borderTop: "1px solid #ccc" }}
+            >
               <TextField
                 fullWidth
                 value={message}

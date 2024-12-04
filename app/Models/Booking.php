@@ -10,8 +10,7 @@ class Booking extends Model
     use HasFactory;
 
     protected $fillable = [
-        'client_id', 
-        'performer_id', 
+        'client_id',  
         'event_name',
         'theme_name',
         'start_date',
@@ -22,6 +21,7 @@ class Booking extends Model
         'notes',
         'status',
     ];
+   
 
     // Relationship to PerformerPortfolio (since performer_id references PerformerPortfolio)
     public function performer()
@@ -40,6 +40,18 @@ class Booking extends Model
 {
     return $this->hasMany(Transaction::class, 'booking_id');
 }
+public function performers()
+{
+    return $this->belongsToMany(PerformerPortfolio::class, 'booking_performer', 'booking_id', 'performer_id')
+        ->withPivot('status')
+        ->withTimestamps();
+}
+//bookingController for performer
+public function bookingPerformers()
+{
+    return $this->hasMany(BookingPerformer::class, 'booking_id');
+}
+
 
     
 }

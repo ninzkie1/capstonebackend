@@ -24,8 +24,8 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import "../index.css";
 import { useStateContext } from "../context/contextprovider";
+import CircularProgress from "@mui/material/CircularProgress"; // For processing icon
 import echo from "../echo";
-
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -34,6 +34,8 @@ export default function Booking() {
   const { user } = useStateContext();
   const [performer, setPerformer] = useState(null);
   const [bookings, setBookings] = useState([]);
+  const [acceptedBookings, setAcceptedBookings] = useState([]);
+  const [declinedBookings, setDeclinedBookings] = useState([]);
   const [unavailableDates, setUnavailableDates] = useState([]);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -70,7 +72,7 @@ export default function Booking() {
   }, [user]);
 
   useEffect(() => {
-    const fetchBookings = async () => {
+    const fetchPendingBookings = async () => {
       if (performer && performer.id) {
         try {
           const response = await axios.get(`/performers/${performer.id}/bookings`, {
@@ -78,10 +80,42 @@ export default function Booking() {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
             },
           });
-          setBookings(response.data);
+          setBookings(response.data.data); // Ensure the data matches the expected response structure
         } catch (error) {
           console.error("Error fetching bookings:", error);
           toast.error("Failed to load bookings.");
+        }
+      }
+    };
+
+    const fetchAcceptedBookings = async () => {
+      if (performer && performer.id) {
+        try {
+          const response = await axios.get(`/performers/${performer.id}/accepted-bookings`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          setAcceptedBookings(response.data.acceptedBookings);
+        } catch (error) {
+          console.error("Error fetching accepted bookings:", error);
+          toast.error("Failed to load accepted bookings.");
+        }
+      }
+    };
+
+    const fetchDeclinedBookings = async () => {
+      if (performer && performer.id) {
+        try {
+          const response = await axios.get(`/performers/${performer.id}/declined-bookings`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          setDeclinedBookings(response.data.declinedBookings);
+        } catch (error) {
+          console.error("Error fetching declined bookings:", error);
+          toast.error("Failed to load declined bookings.");
         }
       }
     };
@@ -103,60 +137,60 @@ export default function Booking() {
     };
 
     if (performer) {
-      fetchBookings();
+      fetchPendingBookings();
+      fetchAcceptedBookings();
+      fetchDeclinedBookings();
       fetchUnavailableDates();
     }
   }, [performer]);
 
   useEffect(() => {
     if (echo) {
-        const channel = echo.channel("bookings"); // Ensure the channel name matches
-        channel.listen(".BookingUpdated", (data) => { // Ensure the event name matches
-            console.log("Booking update received:", data);
-           
+      const channel = echo.channel("bookings");
+      channel.listen(".BookingUpdated", (data) => {
+        console.log("Booking update received:", data);
 
-            // Update booking list with the updated booking
-            setBookings((prevBookings) => {
-                const updatedBookings = prevBookings.map((booking) => 
-                    booking.id === data.booking.id ? { ...booking, ...data.booking } : booking
-                );
-                
-                // If the updated booking does not exist, add it
-                if (!updatedBookings.some((booking) => booking.id === data.booking.id)) {
-                    updatedBookings.push(data.booking);
-                }
+        // Update booking list with the updated booking
+        setBookings((prevBookings) => {
+          const updatedBookings = prevBookings.map((booking) =>
+            booking.id === data.booking.id ? { ...booking, ...data.booking } : booking
+          );
 
-                return updatedBookings;
-            });
+          // If the updated booking does not exist, add it
+          if (!updatedBookings.some((booking) => booking.id === data.booking.id)) {
+            updatedBookings.push(data.booking);
+          }
+
+          return updatedBookings;
         });
+      });
 
-        // Cleanup listener on unmount
-        return () => {
-            channel.stopListening(".BookingUpdated");
-        };
+      // Cleanup listener on unmount
+      return () => {
+        channel.stopListening(".BookingUpdated");
+      };
     }
-}, [echo]);
+  }, [echo]);
 
-  
-useEffect(() => {
-  const fetchTransactions = async () => {
-    if (user && user.id) {
-      try {
-        const response = await axios.get(`/performer-trans`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-        setTransactions(response.data.data);
-      } catch (error) {
-        console.error("Error fetching transactions:", error);
-        toast.error("Failed to load transactions.");
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      if (user && user.id) {
+        try {
+          const response = await axios.get(`/performer-trans`, {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          setTransactions(response.data.data);
+        } catch (error) {
+          console.error("Error fetching transactions:", error);
+          toast.error("Failed to load transactions.");
+        }
       }
-    }
-  };
+    };
 
-  fetchTransactions();
-}, [user]);
+    fetchTransactions();
+  }, [user]);
 
   if (loading) {
     return <div>Loading...</div>;
@@ -164,26 +198,58 @@ useEffect(() => {
 
   const updateBookingStatus = async (bookingId, status) => {
     try {
-      const endpoint = status === "Accepted" ? `/bookings/${bookingId}/accept` : `/bookings/${bookingId}/decline`;
+        const endpoint = status === "Accepted" 
+            ? `/bookings/${bookingId}/accept` 
+            : `/bookings/${bookingId}/decline`;
 
-      await axios.put(endpoint, {}, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+        console.log(`Sending request to ${endpoint} to update booking status to ${status}`);
 
-      setBookings((prevBookings) =>
-        prevBookings.map((booking) =>
-          booking.id === bookingId ? { ...booking, status } : booking
-        )
-      );
+        const response = await axios.put(endpoint, {}, {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+        });
 
-      toast.success(`Booking ${status} successfully!`);
+        if (response.status === 200) {
+            console.log(`Booking ${bookingId} ${status.toLowerCase()} successfully!`, response.data);
+            // Updating the state accordingly
+            if (status === "Accepted") {
+                setBookings((prev) => prev.filter((booking) => booking.id !== bookingId));
+                const acceptedBooking = bookings.find((booking) => booking.id === bookingId);
+                if (acceptedBooking) {
+                    setAcceptedBookings((prev) => [...prev, { ...acceptedBooking, status }]);
+                }
+            } else if (status === "Declined") {
+                setBookings((prev) => prev.filter((booking) => booking.id !== bookingId));
+                const declinedBooking = bookings.find((booking) => booking.id === bookingId);
+                if (declinedBooking) {
+                    setDeclinedBookings((prev) => [...prev, { ...declinedBooking, status }]);
+                }
+            }
+            toast.success(`Booking ${status.toLowerCase()} successfully!`);
+        } else {
+            console.error(`Failed to ${status.toLowerCase()} booking, server responded with status: ${response.status}`);
+            toast.error(`Failed to ${status.toLowerCase()} booking. Please try again later.`);
+        }
+
     } catch (error) {
-      console.error(`Error ${status === "Accepted" ? "accepting" : "declining"} booking:`, error);
-      toast.error(`Failed to ${status.toLowerCase()} booking.`);
+        if (error.response) {
+            // The request was made, and the server responded with a status code
+            console.error(`Error ${status.toLowerCase()} booking - Response data:`, error.response.data);
+            console.error(`Status code:`, error.response.status);
+            toast.error(`Error: ${error.response.data.error || 'Failed to update booking status'}`);
+        } else if (error.request) {
+            // The request was made, but no response was received
+            console.error(`Error ${status.toLowerCase()} booking - No response:`, error.request);
+            toast.error(`No response received from the server. Please check your connection and try again.`);
+        } else {
+            // Something happened in setting up the request that triggered an Error
+            console.error(`Error ${status.toLowerCase()} booking - General error:`, error.message);
+            toast.error(`An unexpected error occurred. Please try again later.`);
+        }
     }
-  };
+};
+
 
   const handleViewDetails = (booking) => {
     setSelectedBooking(booking);
@@ -262,9 +328,7 @@ useEffect(() => {
     );
   };
 
-  const acceptedDates = bookings
-    .filter((booking) => booking.status.toLowerCase() === "accepted")
-    .map((booking) => new Date(booking.start_date));
+  const acceptedDates = acceptedBookings.map((booking) => new Date(booking.start_date));
 
   const tileContent = ({ date, view }) => {
     if (view === "month") {
@@ -385,7 +449,7 @@ useEffect(() => {
           {/* Accepted Bookings */}
           <section className="bg-white shadow-md rounded-lg p-4 lg:p-6 mb-6 overflow-x-auto">
             <h2 className="text-xl font-semibold mb-4">Accepted Bookings</h2>
-            {bookings.filter((booking) => booking.status.toLowerCase() === "accepted").length === 0 ? (
+            {acceptedBookings.length === 0 ? (
               <p>No Accepted Bookings Available</p>
             ) : (
               <table className="min-w-full table-auto">
@@ -400,30 +464,28 @@ useEffect(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  {bookings
-                    .filter((booking) => booking.status.toLowerCase() === "accepted")
-                    .map((booking) => (
-                      <tr key={booking.id} className="border-b">
-                        <td className="border px-2 py-1 lg:px-4 lg:py-2">
-                          {booking.client?.name} {booking.client?.lastname}
-                        </td>
-                        <td className="border px-2 py-1 lg:px-4 lg:py-2">
-                          {booking.event_name}, {booking.theme_name}
-                        </td>
-                        <td className="border px-2 py-1 lg:px-4 lg:py-2">{booking.start_date}</td>
-                        <td className="border px-2 py-1 lg:px-4 lg:py-2">
-                          {formatTime12Hour(booking.start_time)} to {formatTime12Hour(booking.end_time)}
-                        </td>
-                        <td className="border px-2 py-1 lg:px-4 lg:py-2">
-                          {`${booking.municipality_name}, ${booking.barangay_name}`}
-                        </td>
-                        <td className={`border px-2 py-1 lg:px-4 lg:py-2 text-white ${
-                          booking.status.toLowerCase() === "accepted" ? "bg-green-500" : ""
-                        }`}>
-                          {booking.status}
-                        </td>
-                      </tr>
-                    ))}
+                  {acceptedBookings.map((booking) => (
+                    <tr key={booking.id} className="border-b">
+                      <td className="border px-2 py-1 lg:px-4 lg:py-2">
+                        {booking.client?.name} {booking.client?.lastname}
+                      </td>
+                      <td className="border px-2 py-1 lg:px-4 lg:py-2">
+                        {booking.event_name}, {booking.theme_name}
+                      </td>
+                      <td className="border px-2 py-1 lg:px-4 lg:py-2">{booking.start_date}</td>
+                      <td className="border px-2 py-1 lg:px-4 lg:py-2">
+                        {formatTime12Hour(booking.start_time)} to {formatTime12Hour(booking.end_time)}
+                      </td>
+                      <td className="border px-2 py-1 lg:px-4 lg:py-2">
+                        {`${booking.municipality_name}, ${booking.barangay_name}`}
+                      </td>
+                      <td className={`border px-2 py-1 lg:px-4 lg:py-2 text-white ${
+                        booking.status.toLowerCase() === "accepted" ? "bg-green-500" : ""
+                      }`}>
+                        {booking.status}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}
@@ -432,7 +494,7 @@ useEffect(() => {
           {/* Declined Bookings */}
           <section className="bg-white shadow-md rounded-lg p-4 lg:p-6 overflow-x-auto">
             <h2 className="text-xl font-semibold mb-4">Declined Bookings</h2>
-            {bookings.filter((booking) => booking.status.toLowerCase() === "declined").length === 0 ? (
+            {declinedBookings.length === 0 ? (
               <p>No Declined Bookings Available</p>
             ) : (
               <table className="min-w-full table-auto">
@@ -447,36 +509,34 @@ useEffect(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  {bookings
-                    .filter((booking) => booking.status.toLowerCase() === "declined")
-                    .map((booking) => (
-                      <tr key={booking.id} className="border-b">
-                        <td className="border px-2 py-1 lg:px-4 lg:py-2">
-                          {booking.client?.name} {booking.client?.lastname}
-                        </td>
-                        <td className="border px-2 py-1 lg:px-4 lg:py-2">
-                          {booking.event_name}, {booking.theme_name}
-                        </td>
-                        <td className="border px-2 py-1 lg:px-4 lg:py-2">{booking.start_date}</td>
-                        <td className="border px-2 py-1 lg:px-4 lg:py-2">
-                          {formatTime12Hour(booking.start_time)} to {formatTime12Hour(booking.end_time)}
-                        </td>
-                        <td className="border px-2 py-1 lg:px-4 lg:py-2">
-                          {`${booking.municipality_name}, ${booking.barangay_name}`}
-                        </td>
-                        <td className={`border px-2 py-1 lg:px-4 lg:py-2 text-white ${
-                          booking.status.toLowerCase() === "declined" ? "bg-red-500" : ""
-                        }`}>
-                          {booking.status}
-                        </td>
-                      </tr>
-                    ))}
+                  {declinedBookings.map((booking) => (
+                    <tr key={booking.id} className="border-b">
+                      <td className="border px-2 py-1 lg:px-4 lg:py-2">
+                        {booking.client?.name} {booking.client?.lastname}
+                      </td>
+                      <td className="border px-2 py-1 lg:px-4 lg:py-2">
+                        {booking.event_name}, {booking.theme_name}
+                      </td>
+                      <td className="border px-2 py-1 lg:px-4 lg:py-2">{booking.start_date}</td>
+                      <td className="border px-2 py-1 lg:px-4 lg:py-2">
+                        {formatTime12Hour(booking.start_time)} to {formatTime12Hour(booking.end_time)}
+                      </td>
+                      <td className="border px-2 py-1 lg:px-4 lg:py-2">
+                        {`${booking.municipality_name}, ${booking.barangay_name}`}
+                      </td>
+                      <td className={`border px-2 py-1 lg:px-4 lg:py-2 text-white ${
+                        booking.status.toLowerCase() === "declined" ? "bg-red-500" : ""
+                      }`}>
+                        {booking.status}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}
           </section>
 
-           {/* Transaction */}
+          {/* Transaction */}
           <section className="bg-white shadow-md rounded-lg p-4 lg:p-6 mb-6 overflow-x-auto">
             <h2 className="text-xl font-semibold mb-4">Transactions</h2>
             {transactions.length === 0 ? (
@@ -496,7 +556,22 @@ useEffect(() => {
                     {transactions.map((transaction) => (
                       <TableRow key={transaction.id}>
                         <TableCell>{transaction.transaction_type}</TableCell>
-                        <TableCell>₱{parseFloat(transaction.amount).toFixed(2)}</TableCell>
+                        <TableCell>
+                          {/* Conditional rendering for icons */}
+                          {(transaction.transaction_type === "Booking Payment" ||
+                            (transaction.transaction_type === "Booking Accepted" &&
+                              transaction.status === "PROCESSING") ||
+                            (transaction.transaction_type === "Waiting for Approval" &&
+                              transaction.status === "PENDING")) && (
+                            <CircularProgress size={16} style={{ marginRight: 8 }} />
+                          )}
+                         {transaction.transaction_type === "Waiting for Approval" &&
+                          transaction.status === "APPROVED" && (
+                            <span style={{ color: "#22C55E", marginRight: 8 }}>+</span>
+                          )}
+                            
+                          ₱{parseFloat(transaction.amount).toFixed(2)}
+                        </TableCell>
                         <TableCell>
                           {dayjs(transaction.start_date).isValid()
                             ? dayjs(transaction.start_date).format("MMMM D, YYYY")
@@ -527,6 +602,7 @@ useEffect(() => {
                   </TableBody>
                 </Table>
               </TableContainer>
+
             )}
           </section>
         </div>

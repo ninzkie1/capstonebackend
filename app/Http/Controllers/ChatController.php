@@ -7,6 +7,9 @@ use App\Events\MessageSent;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Booking;
 use App\Models\PerformerPortfolio;
+use Illuminate\Support\Facades\Log;
+use App\Models\BookingPerformer;
+use App\Models\Applications;
 
 class ChatController extends Controller
 {
@@ -78,29 +81,85 @@ class ChatController extends Controller
     }
     public function getClientsWithAcceptedBookings()
     {
-        $userId = Auth::id();  // The authenticated performer user ID
+        try {
+            $performerUserId = Auth::id(); // Authenticated performer ID
     
-        // Find the corresponding performer portfolio
+            // Find the performer's portfolio
+            $performerPortfolio = PerformerPortfolio::where('performer_id', $performerUserId)->first();
+    
+            if (!$performerPortfolio) {
+                return response()->json(['error' => 'Performer portfolio not found.'], 404);
+            }
+    
+            // Fetch all clients with pending bookings linked to this performer
+            $clients = BookingPerformer::where('performer_id', $performerPortfolio->id)
+                ->whereHas('booking', function ($query) {
+                    $query->where('status', 'PENDING'); // Filter only 'PENDING' bookings
+                })
+                ->with(['booking.client']) // Load client details via booking
+                ->get()
+                ->pluck('booking.client') // Extract the client relationship
+                ->unique('id') // Ensure clients are unique
+                ->values(); // Re-index collection
+    
+            return response()->json(['status' => 'success', 'data' => $clients], 200);
+        } catch (\Exception $e) {
+            Log::error("Error retrieving clients with pending bookings: " . $e->getMessage());
+            return response()->json(['error' => 'An error occurred. Please try again.'], 500);
+        }
+}
+
+public function canChatPerformer()
+{
+    try {
+        $clientUserId = Auth::id(); // Authenticated client ID
+
+        // Fetch all performers with pending bookings linked to this client
+        $performers = BookingPerformer::whereHas('booking', function ($query) use ($clientUserId) {
+                $query->where('client_id', $clientUserId)
+                      ->where('status', 'PENDING'); // Filter only 'PENDING' bookings
+            })
+            ->with(['performer.user']) // Load performer user details
+            ->get()
+            ->pluck('performer.user') // Extract the performer user relationship
+            ->unique('id') // Ensure performers are unique
+            ->values(); // Re-index collection
+
+        return response()->json(['status' => 'success', 'data' => $performers], 200);
+    } catch (\Exception $e) {
+        Log::error("Error retrieving performers with pending bookings: " . $e->getMessage());
+        return response()->json(['error' => 'An error occurred. Please try again.'], 500);
+    }
+
+}
+public function canChatApplicants()
+{
+    try {
+        // Get the authenticated user
+        $userId = Auth::id();
+
+        // Find the performer's portfolio using the authenticated user's ID
         $performerPortfolio = PerformerPortfolio::where('performer_id', $userId)->first();
-    
+
         // Ensure the performer portfolio exists
         if (!$performerPortfolio) {
             return response()->json(['error' => 'Performer portfolio not found.'], 404);
         }
-    
-        $performerPortfolioId = $performerPortfolio->id; // Get the portfolio id (the one used in the booking table)
-    
-        // Fetch clients that have bookings with the authenticated performer and a status of "ACCEPTED"
-        $clients = Booking::where('performer_id', $performerPortfolioId) // Use performer portfolio ID instead of user ID
-            ->where('status', 'ACCEPTED')
-            ->with('client')  // Assuming there is a relation named 'client' in Booking model
-            ->get()
-            ->map(function ($booking) {
-                return $booking->client;  // Returning the associated client
-            })
-            ->unique('id')  // Ensure clients are unique
-            ->values();  // Re-index the collection
-    
-        return response()->json($clients);
+
+        // Retrieve all applications where the performer is associated and the message is 'ENABLED'
+        $applications = Applications::where('performer_id', $performerPortfolio->id)
+            ->where('message', 'ENABLED') // Check if the message is 'ENABLED'
+            ->with(['post.client']) // Load the related post and client details
+            ->get();
+
+        // Extract unique client details from the applications
+        $clients = $applications->pluck('post.client')->unique('id')->values();
+
+        return response()->json(['status' => 'success', 'data' => $clients], 200);
+    } catch (\Exception $e) {
+        Log::error("Error checking chat availability for applicants: " . $e->getMessage());
+        return response()->json(['error' => 'An error occurred. Please try again.'], 500);
     }
+}
+
 }

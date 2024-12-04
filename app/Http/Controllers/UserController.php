@@ -116,5 +116,11 @@ public function getUser($id)
         'role' => $user->role,
     ]);
 }
+public function getAdmin()
+{
+    $users = User::where('role', 'admin')->get();
+    return response()->json($users);
+}
+
 
 }

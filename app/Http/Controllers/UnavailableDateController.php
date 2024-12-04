@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BookingPerformer;
 use Illuminate\Http\Request;
 use App\Models\UnavailableDate;
 use Illuminate\Support\Facades\Auth;
@@ -40,7 +41,27 @@ class UnavailableDateController extends Controller
     
         return response()->json(['message' => 'Unavailable dates added successfully.']);
     }
-    
+    public function getPendingBookingDates($performerId)
+{
+    try {
+        $pendingBookings = BookingPerformer::where('performer_id', $performerId)
+            ->whereHas('booking', function ($query) {
+                $query->where('status', 'PENDING');
+            })
+            ->with('booking')
+            ->get();
+
+        // Extract pending booking dates
+        $pendingBookingDates = $pendingBookings->map(function ($bookingPerformer) {
+            return $bookingPerformer->booking->start_date;
+        })->unique(); // Ensures no duplicates
+
+        return response()->json(['pendingBookingDates' => $pendingBookingDates->values()]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Failed to fetch pending booking dates'], 500);
+    }
+}
+
     
     }
     

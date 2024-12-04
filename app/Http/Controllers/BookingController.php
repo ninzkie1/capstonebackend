@@ -14,16 +14,17 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Transaction;
 //listener to realtime pusher 
 use App\Events\BookingUpdated;
+use App\Models\BookingPerformer;
 
 class BookingController extends Controller
 {
     // Store a new booking awdawdw
     public function store(Request $request)
     {
-        // Validate the incoming request
+        // Validate the request
         $validatedData = $request->validate([
-            'performers' => 'required|array', 
-            'performers.*.performer_id' => 'required|exists:performer_portfolios,id', 
+            'performer_ids' => 'required|array', // Multiple performer IDs
+            'performer_ids.*' => 'exists:performer_portfolios,id', // Validate performer IDs
             'event_name' => 'required|string',
             'theme_name' => 'required|string',
             'start_date' => 'required|date',
@@ -35,105 +36,117 @@ class BookingController extends Controller
         ]);
     
         try {
-            // Retrieve the authenticated user
             $user = Auth::user();
+    
+            // Ensure the user is authenticated
             if (!$user) {
-                return response()->json(['error' => 'User not authenticated. Please login to proceed.'], 401);
+                return response()->json(['error' => 'User not authenticated.'], 401);
             }
     
+            DB::beginTransaction(); // Begin transaction
+    
+            // Step 1: Calculate the total cost and check performers' availability
             $totalCost = 0;
-            $bookings = [];
+            $performers = PerformerPortfolio::whereIn('id', $validatedData['performer_ids'])->get();
+            $conflictingPerformers = [];
     
-            // Check availability and calculate total cost
-            foreach ($validatedData['performers'] as $performerData) {
-                $performerId = $performerData['performer_id'];
-                $startDate = Carbon::parse($validatedData['start_date'])->format('Y-m-d');
-    
-                // Check if performer is unavailable
-                $isUnavailable = UnavailableDate::where('performer_id', $performerId)
-                    ->whereDate('unavailable_date', $startDate)
+            foreach ($performers as $performer) {
+                // Check if the performer is unavailable
+                $isUnavailable = UnavailableDate::where('performer_id', $performer->id)
+                    ->whereDate('unavailable_date', $validatedData['start_date'])
                     ->exists();
     
-                $hasAcceptedBooking = Booking::where('performer_id', $performerId)
-                    ->whereDate('start_date', $startDate)
-                    ->where('status', 'Accepted')
+                if ($isUnavailable) {
+                    $conflictingPerformers[] = "Performer {$performer->id} ({$performer->user->name}) is unavailable on the selected date.";
+                    continue;
+                }
+    
+                // Check if the performer has a pending booking on the same date
+                $hasPendingBooking = BookingPerformer::where('performer_id', $performer->id)
+                    ->whereHas('booking', function ($query) use ($validatedData) {
+                        $query->whereDate('start_date', $validatedData['start_date'])
+                            ->where('status', 'PENDING');
+                    })
                     ->exists();
     
-                if ($isUnavailable || $hasAcceptedBooking) {
-                    return response()->json(['error' => 'One or more performers are unavailable on the selected date.'], 409);
+                if ($hasPendingBooking) {
+                    $conflictingPerformers[] = "Performer {$performer->id} ({$performer->user->name}) has a pending booking on the selected date.";
+                    continue;
                 }
     
-                $performerPortfolio = PerformerPortfolio::find($performerId);
-                if (!$performerPortfolio) {
-                    return response()->json(['error' => 'Performer portfolio not found.'], 404);
-                }
-    
-                $totalCost += $performerPortfolio->rate;
+                $totalCost += $performer->rate; // Sum the performer's rate
             }
     
-            // Check if the user has enough balance
+            // Return errors if there are conflicts
+            if (!empty($conflictingPerformers)) {
+                return response()->json(['error' => $conflictingPerformers], 409);
+            }
+    
+            // Step 2: Validate the client's balance
             if ($user->talento_coin_balance < $totalCost) {
                 return response()->json(['error' => 'Insufficient balance for this booking.'], 409);
             }
     
-            DB::beginTransaction();
-    
-            // Deduct total cost from user's balance
-            $balanceBeforeUser = $user->talento_coin_balance;
+            // Step 3: Deduct the total cost from the client's balance
             $user->talento_coin_balance -= $totalCost;
             $user->save();
     
-            foreach ($validatedData['performers'] as $performerData) {
-                $performerId = $performerData['performer_id'];
-                $performerPortfolio = PerformerPortfolio::find($performerId);
-                $rate = $performerPortfolio->rate;
+            // Step 4: Create the booking
+            $booking = Booking::create([
+                'client_id' => $user->id,
+                'event_name' => $validatedData['event_name'],
+                'theme_name' => $validatedData['theme_name'],
+                'start_date' => $validatedData['start_date'],
+                'start_time' => $validatedData['start_time'],
+                'end_time' => $validatedData['end_time'],
+                'municipality_name' => $validatedData['municipality_name'],
+                'barangay_name' => $validatedData['barangay_name'],
+                'notes' => $validatedData['notes'],
+                'status' => 'PENDING',
+            ]);
     
-                // Create the booking
-                $booking = Booking::create([
-                    'client_id' => $user->id,
-                    'performer_id' => $performerId,
-                    'event_name' => $validatedData['event_name'],
-                    'theme_name' => $validatedData['theme_name'],
-                    'start_date' => $validatedData['start_date'],
-                    'start_time' => $validatedData['start_time'],
-                    'end_time' => $validatedData['end_time'],
-                    'municipality_name' => $validatedData['municipality_name'],
-                    'barangay_name' => $validatedData['barangay_name'],
-                    'notes' => $validatedData['notes'],
-                    'status' => 'Pending',
+            // Step 5: Attach performers and create payment transactions
+            $balanceBefore = $user->talento_coin_balance + $totalCost;
+    
+            foreach ($performers as $performer) {
+                // Link the performer to the booking
+                BookingPerformer::create([
+                    'booking_id' => $booking->id,
+                    'performer_id' => $performer->id,
                 ]);
     
-                // Create a transaction for each booking
+                // Log the transaction for this performer's payment
                 Transaction::create([
                     'user_id' => $user->id,
+                    'performer_id' => $performer->id, // Store performer_id here
                     'booking_id' => $booking->id,
                     'transaction_type' => 'Booking Payment',
-                    'amount' => $rate,
-                    'balance_before' => $balanceBeforeUser,
-                    'balance_after' => $user->talento_coin_balance,
+                    'amount' => $performer->rate,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceBefore - $performer->rate,
                     'status' => 'PENDING',
                 ]);
     
-                $balanceBeforeUser -= $rate; // Update balance for next transaction
-                $bookings[] = $booking;
+                $balanceBefore -= $performer->rate;
             }
     
             DB::commit();
     
-            foreach ($bookings as $booking) {
-                event(new BookingUpdated($booking));
-            }
-    
             return response()->json([
-                'message' => 'All bookings successfully confirmed. Awaiting performer approval.',
-                'bookings' => $bookings,
+                'message' => 'Booking successfully created.',
+                'booking' => $booking->load('performers.performer'),
             ], 201);
+    
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Booking Error: " . $e->getMessage());
-            return response()->json(['error' => 'There was an error booking the performers. Please try again.'], 500);
+            return response()->json(['error' => 'Error creating booking. Please try again.'], 500);
         }
     }
+    
+    
+
+
     
 
     // Get a list of all bookings
@@ -178,146 +191,211 @@ class BookingController extends Controller
 
 
     // Get a specific booking by ID
-    public function show($id)
+    public function show($bookingId)
     {
-        try {
-            $booking = Booking::find($id);
-
-            if (!$booking) {
-                return response()->json(['error' => 'Booking not found.'], 404);
-            }
-
-            return response()->json($booking);
-        } catch (\Exception $e) {
-            Log::error("Booking Retrieval Error for ID $id: " . $e->getMessage());
-            return response()->json(['error' => 'There was an error retrieving the booking. Please try again.'], 500);
-        }
-    }
-
-    // Update a specific booking by ID
-    public function declineBooking($id)
-    {
-        // Retrieve the authenticated user (performer)
-        $authUser = Auth::user();
+        $booking = Booking::with(['performers' => function ($query) {
+            $query->select('performer_portfolios.id', 'performer_portfolios.talent_name', 'booking_performer.status');
+        }])->find($bookingId);
     
-        // Retrieve the booking
-        $booking = Booking::find($id);
         if (!$booking) {
-            return response()->json(['error' => 'Booking not found'], 404);
+            return response()->json(['error' => 'Booking not found.'], 404);
         }
     
-        // Check if the authenticated user is the correct performer
-        if ($booking->performer->user->id != $authUser->id) {
-            return response()->json(['error' => 'Unauthorized action. You are not allowed to decline this booking.'], 403);
-        }
-    
-        // Prevent declining if the booking is already declined or accepted
-        if ($booking->status === 'Declined' || $booking->status === 'Accepted') {
-            return response()->json(['error' => 'This booking has already been processed.'], 400);
-        }
-    
-        try {
-            DB::beginTransaction();
-    
-            // Retrieve client and rate
-            $client = User::find($booking->client_id);
-            $performerPortfolio = PerformerPortfolio::find($booking->performer_id);
-    
-            if (!$client || !$performerPortfolio) {
-                DB::rollBack();
-                return response()->json(['error' => 'Client or performer portfolio not found.'], 404);
-            }
-    
-            $rate = $performerPortfolio->rate;
-    
-            // Update booking status to 'Declined'
-            $booking->update(['status' => 'Declined']);
-    
-            // Refund the client's balance
-            $balanceBeforeClient = $client->talento_coin_balance;
-            $client->talento_coin_balance += $rate;
-            $client->save();
-    
-            // Log the refund transaction
-            Transaction::create([
-                'user_id' => $client->id,
-                'booking_id' => $booking->id,
-                'transaction_type' => 'Cancelled Booking',
-                'amount' => $rate,
-                'balance_before' => $balanceBeforeClient,
-                'balance_after' => $client->talento_coin_balance,
-                'status' => 'REFUNDED',
-            ]);
-    
-            DB::commit();
-            event(new BookingUpdated($booking));
-    
-            return response()->json(['message' => 'Booking declined and refund processed successfully.', 'booking' => $booking], 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Booking Decline Error for ID $id: " . $e->getMessage());
-            return response()->json(['error' => 'There was an error declining the booking. Please try again.'], 500);
-        }
+        return response()->json(['data' => $booking]);
     }
     
-    // Accept a booking by ID
-    public function acceptBooking($id)
-    {
-        // Retrieve the authenticated user (performer)
+//performer side it will decline the booking request
+    public function declineBooking($bookingId)
+{
+    try {
         $authUser = Auth::user();
-    
-        // Retrieve the booking
-        $booking = Booking::find($id);
-        if (!$booking) {
-            return response()->json(['error' => 'Booking not found'], 404);
+        //if not login/authenticated user it will give an error
+        if (!$authUser) {
+            return response()->json(['error' => 'Unauthorized. User not found.'], 401);
         }
-    
-        // Check if the authenticated user is the correct performer
-        if ($booking->performer->user->id != $authUser->id) {
-            return response()->json(['error' => 'Unauthorized action. You are not allowed to accept this booking.'], 403);
+
+        $performer = $authUser->performerPortfolio;
+
+        if (!$performer) {
+            Log::error("Unauthorized action: Performer profile not found for user ID " . $authUser->id);
+            return response()->json(['error' => 'Unauthorized action.'], 403);
         }
-    
-        // Prevent accepting if the booking is already accepted or declined
-        if ($booking->status === 'Accepted' || $booking->status === 'Declined') {
-            return response()->json(['error' => 'This booking has already been processed.'], 400);
+
+        $bookingPerformer = BookingPerformer::where('booking_id', $bookingId)
+            ->where('performer_id', $performer->id)
+            ->first();
+
+        if (!$bookingPerformer) {
+            Log::error("Booking not found for booking ID $bookingId and performer ID " . $performer->id);
+            return response()->json(['error' => 'Booking not found.'], 404);
         }
-    
-        try {
-            DB::beginTransaction();
-    
-            // Retrieve the performer portfolio and rate
-            $performerPortfolio = PerformerPortfolio::find($booking->performer_id);
-            if (!$performerPortfolio) {
-                DB::rollBack();
-                return response()->json(['error' => 'Performer portfolio not found.'], 404);
-            }
-    
-            $rate = $performerPortfolio->rate;
-    
-            // Update booking status to 'Accepted'
-            $booking->update(['status' => 'ACCEPTED']);
-    
-            // Log a pending transaction for the performer
-            Transaction::create([
-                'user_id' => $authUser->id,
-                'booking_id' => $booking->id,
-                'transaction_type' => 'Booking Received',
-                'amount' => $rate,
-                'balance_before' => $authUser->talento_coin_balance,
-                'balance_after' => $authUser->talento_coin_balance,
-                'status' => 'PENDING', // Pending until client
-            ]);
-    
-            DB::commit();
-            event(new BookingUpdated($booking));
-    
-            return response()->json(['message' => 'Booking accepted successfully. Awaiting admin approval for payment.', 'booking' => $booking], 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Booking Accept Error for ID $id: " . $e->getMessage());
-            return response()->json(['error' => 'There was an error accepting the booking. Please try again.'], 500);
+
+        if ($bookingPerformer->status !== 'Pending') {
+            return response()->json(['error' => 'Booking has already been processed.'], 400);
         }
+
+        DB::beginTransaction();
+
+        // Step 1: Update the status to 'Declined' for the performer
+        $bookingPerformer->status = 'Declined';
+        $bookingPerformer->save();
+
+        // Step 2: Refund the amount to the client's balance
+        $client = $bookingPerformer->booking->client;
+        $performerRate = $performer->rate;
+
+        $balanceBeforeClient = $client->talento_coin_balance;
+        $client->talento_coin_balance += $performerRate;
+        $client->save();
+
+        // Step 3: Update the transaction for the declined performer
+        $transaction = Transaction::where('booking_id', $bookingPerformer->booking_id)
+            ->where('user_id', $client->id)
+            ->where('performer_id', $performer->id) // Make sure we use performer_id to identify the correct transaction
+            ->where('status', 'PENDING') // Make sure we only pick up transactions that haven't already been refunded
+            ->first();
+
+        if ($transaction) {
+            $transaction->transaction_type = 'Booking Declined';
+            $transaction->balance_before = $balanceBeforeClient;
+            $transaction->balance_after = $client->talento_coin_balance;
+            $transaction->status = 'REFUNDED';
+            $transaction->save();
+        } else {
+            Log::warning("Transaction not found for booking ID $bookingId and client ID " . $client->id);
+        }
+
+        // Step 4: Check if all performers have declined the booking
+        $remainingPerformers = BookingPerformer::where('booking_id', $bookingId)
+            ->where('status', '!=', 'Declined')
+            ->count();
+
+        if ($remainingPerformers == 0) {
+            // All performers have declined the booking, so mark it as cancelled
+            $booking = $bookingPerformer->booking;
+            $booking->status = 'DECLINED';
+            $booking->save();
+        }
+
+        DB::commit();
+
+        event(new BookingUpdated($bookingPerformer->booking));
+
+        return response()->json([
+            'message' => 'You have successfully declined the booking. The client has been refunded.',
+            'booking' => $bookingPerformer,
+        ], 200);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error("Booking Decline Error for Booking ID $bookingId: " . $e->getMessage());
+        return response()->json(['error' => 'There was an error declining the booking. Please try again.'], 500);
     }
+}
+
+    
+public function acceptBooking($bookingId)
+{
+    try {
+        // Get the authenticated user
+        $authUser = Auth::user();
+
+        if (!$authUser) {
+            return response()->json(['error' => 'Unauthorized. User not found.'], 401);
+        }
+
+        // Check if the authenticated user is a performer
+        $performer = $authUser->performerPortfolio;
+
+        if (!$performer) {
+            return response()->json(['error' => 'Unauthorized action.'], 403);
+        }
+
+        // Find the booking performer record
+        $bookingPerformer = BookingPerformer::where('booking_id', $bookingId)
+            ->where('performer_id', $performer->id)
+            ->first();
+
+        if (!$bookingPerformer) {
+            return response()->json(['error' => 'Booking performer not found.'], 404);
+        }
+
+        if ($bookingPerformer->status !== 'Pending') {
+            return response()->json(['error' => 'Booking has already been processed.'], 400);
+        }
+
+        // Begin a transaction
+        DB::beginTransaction();
+
+        // Update the status of the performer to 'Accepted'
+        $bookingPerformer->status = 'Accepted';
+        $bookingPerformer->save();
+
+        // Update the transaction status to reflect the acceptance
+        $transaction = Transaction::where('booking_id', $bookingId)
+            ->where('user_id', $bookingPerformer->booking->client_id) // user_id should refer to client_id
+            ->where('performer_id', $performer->id)
+            ->first();
+
+        if ($transaction) {
+            // Update the transaction to indicate the booking has been accepted by this performer
+            $transaction->transaction_type = 'Booking Accepted';
+            $transaction->status = 'PROCESSING'; // Status can be updated to COMPLETED after the event
+            $transaction->save();
+
+            // Fetch the performer's balance before creating the "Waiting for Approval" transaction
+            $performerUser = $authUser;
+
+            if (!$performerUser) {
+                throw new \Exception('Performer user not found.');
+            }
+
+            $balanceBefore = $performerUser->talento_coin_balance;
+            $amount = $transaction->amount;
+
+            // Create a new transaction for "Waiting for Approval"
+            Transaction::create([
+                'user_id' => $bookingPerformer->booking->client_id, // user_id is for client
+                'booking_id' => $bookingId,
+                'performer_id' => $performer->id, // performer_id is for performer
+                'transaction_type' => 'Waiting for Approval',
+                'amount' => $amount,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceBefore, // No balance change yet since approval is pending
+                'status' => 'PENDING', // Waiting for approval
+            ]);
+        } else {
+            Log::error("Transaction not found for booking ID $bookingId and performer ID {$performer->id} and client ID {$bookingPerformer->booking->client_id}");
+            return response()->json(['error' => 'Transaction not found.'], 404);
+        }
+
+        // Commit the transaction
+        DB::commit();
+
+        // Trigger an event to indicate the booking has been updated
+        event(new BookingUpdated($bookingPerformer->booking));
+
+        return response()->json([
+            'message' => 'Booking accepted successfully.',
+            'booking' => $bookingPerformer,
+        ], 200);
+
+    } catch (\Exception $e) {
+        // Rollback transaction in case of any error
+        DB::rollBack();
+        Log::error("Booking Accept Error for Booking ID $bookingId: " . $e->getMessage() . ' at ' . $e->getFile() . ':' . $e->getLine());
+        return response()->json(['error' => 'There was an error accepting the booking. Please try again.'], 500);
+    }
+}
+
+
+    
+    
+    
+    
+
+
+    
     
     
 
@@ -325,16 +403,74 @@ class BookingController extends Controller
     public function getBookingsForPerformer($performerId)
     {
         try {
-            // Fetch bookings for the given performer ID and include related client and performer data
-            $bookings = Booking::where('performer_id', $performerId)
-                ->with(['client', 'performer.user'])  // Add 'performer.user' to get performer details
+            // Fetch bookings for the given performer ID
+            $bookings = Booking::whereHas('bookingPerformers', function ($query) use ($performerId) {
+                    // Ensure we only get bookings where the specific performer has a status of Pending
+                    $query->where('performer_id', $performerId)
+                          ->where('status', 'Pending');
+                })
+                ->with(['client', 'bookingPerformers.performer.user'])  // Include related client and performer data
                 ->get();
-            return response()->json($bookings, 200);
+    
+            // Filter bookings that are only pending for this performer
+            $pendingBookings = $bookings->filter(function ($booking) use ($performerId) {
+                $bookingPerformer = $booking->bookingPerformers->firstWhere('performer_id', $performerId);
+                return $bookingPerformer && $bookingPerformer->status === 'Pending';
+            });
+    
+            // Optionally format the response to include only necessary fields
+            $formattedBookings = $pendingBookings->map(function ($booking) {
+                return [
+                    'id' => $booking->id,
+                    'event_name' => $booking->event_name,
+                    'theme_name' => $booking->theme_name,
+                    'start_date' => $booking->start_date,
+                    'start_time' => $booking->start_time,
+                    'end_time' => $booking->end_time,
+                    'municipality_name' => $booking->municipality_name,
+                    'barangay_name' => $booking->barangay_name,
+                    'notes' => $booking->notes,
+                    'status' => $booking->status,
+                    'client' => [
+                        'name' => $booking->client->name,
+                        'lastname' => $booking->client->lastname,
+                        'email' => $booking->client->email,
+                    ],
+                    'performers' => $booking->bookingPerformers->map(function ($performer) {
+                        return [
+                            'name' => $performer->performer->user->name,
+                            'lastname' => $performer->performer->user->lastname,
+                            'rate' => $performer->performer->rate,
+                            'average_rating' => $performer->performer->average_rating,
+                            'image_profile' => $performer->performer->image_profile,
+                        ];
+                    }),
+                ];
+            });
+    
+            return response()->json(['status' => 'success', 'data' => $formattedBookings], 200);
         } catch (\Exception $e) {
             Log::error("Booking Retrieval Error for Performer ID $performerId: " . $e->getMessage());
             return response()->json(['error' => 'There was an error retrieving bookings. Please try again.'], 500);
         }
     }
+    
+
+    
+    public function getPendingBookings()
+{
+    $authUser = Auth::user();
+
+    $performer = $authUser->performerPortfolio;
+    if (!$performer) {
+        return response()->json(['error' => 'Unauthorized action.'], 403);
+    }
+
+    $pendingBookings = $performer->bookings()->wherePivot('status', 'Pending')->get();
+
+    return response()->json(['data' => $pendingBookings]);
+}
+
 
 
 
@@ -498,7 +634,75 @@ class BookingController extends Controller
             return response()->json(['error' => 'Error retrieving accepted booking contacts. Please try again.'], 500);
         }
     }
-    
-    
+    public function getAcceptedBookingsForPerformer($performerId)
+{
+    try {
+        // Query to get accepted bookings for the given performer ID
+        $acceptedBookings = BookingPerformer::where('performer_id', $performerId)
+            ->where('status', 'Accepted')
+            ->with(['booking.client', 'booking'])  // Include related booking and client data
+            ->get()
+            ->map(function ($bookingPerformer) {
+                $booking = $bookingPerformer->booking;
+
+                return [
+                    'id' => $booking->id,
+                    'event_name' => $booking->event_name,
+                    'theme_name' => $booking->theme_name,
+                    'start_date' => $booking->start_date,
+                    'start_time' => $booking->start_time,
+                    'end_time' => $booking->end_time,
+                    'municipality_name' => $booking->municipality_name,
+                    'barangay_name' => $booking->barangay_name,
+                    'notes' => $booking->notes,
+                    'status' => $bookingPerformer->status,
+                    'client' => [
+                        'name' => $booking->client->name ?? 'N/A',
+                        'lastname' => $booking->client->lastname ?? 'N/A',
+                        'email' => $booking->client->email ?? 'N/A',
+                    ],
+                ];
+            });
+
+        return response()->json(['acceptedBookings' => $acceptedBookings], 200);
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Failed to fetch accepted bookings', 'message' => $e->getMessage()], 500);
+    }
+}
+public function getDeclinedBookingsForPerformer($performerId)
+{
+    try {
+        // Query to get declined bookings for the given performer ID
+        $declinedBookings = BookingPerformer::where('performer_id', $performerId)
+            ->where('status', 'Declined')
+            ->with(['booking.client', 'booking'])  // Include related booking and client data
+            ->get()
+            ->map(function ($bookingPerformer) {
+                $booking = $bookingPerformer->booking;
+
+                return [
+                    'id' => $booking->id,
+                    'event_name' => $booking->event_name,
+                    'theme_name' => $booking->theme_name,
+                    'start_date' => $booking->start_date,
+                    'start_time' => $booking->start_time,
+                    'end_time' => $booking->end_time,
+                    'municipality_name' => $booking->municipality_name,
+                    'barangay_name' => $booking->barangay_name,
+                    'notes' => $booking->notes,
+                    'status' => $bookingPerformer->status,
+                    'client' => [
+                        'name' => $booking->client->name ?? 'N/A',
+                        'lastname' => $booking->client->lastname ?? 'N/A',
+                        'email' => $booking->client->email ?? 'N/A',
+                    ],
+                ];
+            });
+
+        return response()->json(['declinedBookings' => $declinedBookings], 200);
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Failed to fetch declined bookings', 'message' => $e->getMessage()], 500);
+    }
+}
 
 } 
