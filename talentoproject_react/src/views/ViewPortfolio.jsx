@@ -95,6 +95,13 @@ export default function ViewPortfolio() {
             });
     };
 
+    // Function to book the performer
+    const handleBookPerformer = (performer) => {
+        navigate("/addBook", {
+            state: { performers: [performer] }, // Wrap the performer in an array
+        });
+    };
+
     if (!performer) {
         return <div>Loading...</div>;
     }
@@ -119,7 +126,7 @@ export default function ViewPortfolio() {
                                 <img
                                     src={
                                         performer.user?.image_profile
-                                            ? `http://192.168.1.23:8000/storage/${performer.user.image_profile}`
+                                            ? `http://192.168.18.156:8000/storage/${performer.user.image_profile}`
                                             : profilePlaceholder
                                     }
                                     alt="Profile Photo"
@@ -138,6 +145,14 @@ export default function ViewPortfolio() {
                                     </h2>
                                     <p className="text-sm text-gray-500">{performer.talent_name}</p>
                                 </div>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={() => handleBookPerformer(performer)}
+                                    className="mt-4 md:mt-0"
+                                >
+                                    Book Performer
+                                </Button>
                             </div>
 
                             <div className="mt-4 md:mt-6 border-t border-b border-gray-200">

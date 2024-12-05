@@ -346,7 +346,7 @@ const handleAccept = (request, type) => {
           <td className="border px-2 md:px-4 py-2">{request.reference_number}</td>
           <td className="border px-2 md:px-4 py-2">
             <a
-              href={`http://localhost:8000/storage/${request.receipt_path}`}
+              href={`http://192.168.18.156:8000/storage/${request.receipt_path}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-500 underline"
@@ -415,7 +415,7 @@ const handleAccept = (request, type) => {
           <td className="border px-2 md:px-4 py-2">{request.account_number}</td>
           <td className="border px-2 md:px-4 py-2">
             <a
-              href={`http://localhost:8000/storage/${request.qr_code_path}`}
+              href={`http://192.168.18.156:8000/storage/${request.qr_code_path}`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-500 underline"

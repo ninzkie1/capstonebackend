@@ -172,6 +172,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/getAdmin', [UserController::class, 'getAdmin']);
     Route::get('/performers/{performerId}/performerPendingDates', [UnavailableDateController::class, 'getPendingBookingDates']);
     Route::get('/performer/can-chat-applicants', [ChatController::class, 'canChatApplicants']);
+    Route::get('/client/can-chat-client', [ChatController::class, 'canChatPostClient']);
+    Route::put('applications/{applicationId}/approve', [ApplicationsController::class, 'approve']);
+    Route::put('applications/{applicationId}/decline', [ApplicationsController::class, 'decline']);
+
     //get pending bookings for all authenticated users
     Route::get('/getPendingBookings', [BookingController::class, 'getPendingBookings']);
 

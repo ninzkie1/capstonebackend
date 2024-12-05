@@ -15,10 +15,9 @@ import {
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useStateContext } from "../context/contextprovider";
 import { useOutletContext, useNavigate } from "react-router-dom";
-import ChatApplicants from "./ChatApplicants";
 import dayjs from "dayjs";
 
-export default function AdminPost() {
+export default function Post() {
   const talents = ["Singer", "Dancer", "Musician", "Band", "Entertainer", "DJ"];
   const { user } = useStateContext();
   const { isSidebarOpen } = useOutletContext();
@@ -206,8 +205,8 @@ export default function AdminPost() {
   };
   
 
-  const handleMessage = (postUser) => {
-    navigate(`/chat`, { state: { userId: postUser.id } });
+  const handleMessage =() => {
+    navigate('/ChatApplicants');
   };
 
   const handleFilterChange = (talent) => {
@@ -383,51 +382,54 @@ export default function AdminPost() {
                     )}
 
                 {/* Comment Section */}
-                <Box sx={{ mt: 3 }}>
-                  <TextField
-                    fullWidth
-                    label="Add Comment"
-                    value={comments[post.id] || ""}
-                    onChange={(e) =>
-                      setComments((prevComments) => ({
-                        ...prevComments,
-                        [post.id]: e.target.value,
-                      }))
-                    }
+                <Box
                     sx={{
-                      mb: 1,
-                      backgroundColor: "#E3F2FD",
-                      borderRadius: 1,
+                      maxHeight: 200, // Adjust the height as needed
+                      overflowY: "auto",
+                      border: "1px solid #ccc",
+                      borderRadius: "8px",
+                      p: 1,
+                      mt: 2,
                     }}
-                  />
-                  <Button variant="contained" color="primary" onClick={() => handleCommentSubmit(post.id)}>
-                    Submit Comment
-                  </Button>
-                </Box>
-
-                <Typography variant="h6" sx={{ mt: 3, color: "#0D47A1" }}>
-                  Comments:
-                </Typography>
-                {post.comments && post.comments.length > 0 ? (
-                  post.comments.map((comment, index) => (
-                    <Box key={index} sx={{ ml: 3, mt: 1, p: 1.5, borderRadius: 1, backgroundColor: "#FFF9C4" }}>
-                      <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-                        <Avatar src={comment.user?.avatar || ""} sx={{ bgcolor: "#2196f3", mr: 1 }} />
-                        <Typography variant="body2" color="textSecondary" fontWeight="bold">
-                          {comment.user ? comment.user.name : "Unknown User"} -{" "}
-                          <span style={{ fontSize: "0.8rem" }}>{new Date(comment.created_at).toLocaleString()}</span>
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2" color="textPrimary">
-                        {comment.content}
+                  >
+                    {post.comments && post.comments.length > 0 ? (
+                      post.comments.map((comment, index) => (
+                        <Box
+                          key={index}
+                          sx={{
+                            mb: 1.5,
+                            p: 1.5,
+                            borderRadius: 1,
+                            backgroundColor: "#FFF9C4",
+                          }}
+                        >
+                          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+                            <Avatar
+                              src={comment.user?.avatar || ""}
+                              sx={{ bgcolor: "#2196f3", mr: 1 }}
+                            />
+                            <Typography
+                              variant="body2"
+                              color="textSecondary"
+                              fontWeight="bold"
+                            >
+                              {comment.user ? comment.user.name : "Unknown User"} -{" "}
+                              <span style={{ fontSize: "0.8rem" }}>
+                                {new Date(comment.created_at).toLocaleString()}
+                              </span>
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" color="textPrimary">
+                            {comment.content}
+                          </Typography>
+                        </Box>
+                      ))
+                    ) : (
+                      <Typography variant="body2" color="textSecondary" sx={{ textAlign: "center" }}>
+                        No comments yet.
                       </Typography>
-                    </Box>
-                  ))
-                ) : (
-                  <Typography variant="body2" color="textSecondary" sx={{ ml: 3 }}>
-                    No comments yet.
-                  </Typography>
-                )}
+                    )}
+                  </Box>
               </CardContent>
             </Card>
           ))
@@ -437,9 +439,7 @@ export default function AdminPost() {
           </Typography>
         )}
       </div>
-      <div className="fixed bottom-6 right-6 z-50">
-               <ChatApplicants/>
-            </div>
+  
     </div>
     
   );

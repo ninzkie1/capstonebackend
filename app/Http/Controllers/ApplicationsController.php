@@ -38,7 +38,7 @@ class ApplicationsController extends Controller
         $application = Applications::create([
             'post_id' => $postId,
             'performer_id' => $performerPortfolio->id,
-            'message' => 'ENABLED', // Default message
+            'message' => 'DISABLED', // Default message
             'status' => 'PENDING', // Default status
         ]);
 
@@ -62,5 +62,68 @@ class ApplicationsController extends Controller
 
     return response()->json($applications);
 }
+public function approve(Request $request, $applicationId)
+{
+    // Fetch the authenticated user
+    $user = $request->user();
+
+    // Fetch the application
+    $application = Applications::with('post')->find($applicationId);
+
+    // Check if the application exists
+    if (!$application) {
+        return response()->json(['message' => 'Application not found.'], 404);
+    }
+
+    // Check if the authenticated user owns the post
+    if ($application->post->user_id !== $user->id) {
+        return response()->json(['message' => 'You are not authorized to approve this application.'], 403);
+    }
+
+    // Update the application's status and message
+    $application->update([
+        'message' => 'ENABLED',
+        'status' => 'APPROVED',
+    ]);
+
+    return response()->json(['message' => 'Application approved successfully.', 'application' => $application]);
+}
+public function decline(Request $request, $applicationId)
+{
+    // Fetch the authenticated user
+    $user = $request->user();
+
+    // Fetch the application along with the associated post
+    $application = Applications::with('post')->find($applicationId);
+
+    // Check if the application exists
+    if (!$application) {
+        return response()->json(['message' => 'Application not found.'], 404);
+    }
+
+    // Check if the post exists and belongs to the authenticated user
+    $post = $application->post;
+    if (!$post) {
+        return response()->json(['message' => 'Post not found.'], 404);
+    }
+
+    // Check if the authenticated user owns the post
+    if ($post->user_id !== $user->id) {
+        return response()->json(['message' => 'You are not authorized to decline this application.'], 403);
+    }
+
+    // Update the application's status and message
+    try {
+        $application->update([
+            'message' => 'DISABLED',
+            'status' => 'DECLINED',
+        ]);
+
+        return response()->json(['message' => 'Application declined successfully.', 'application' => $application], 200);
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'Failed to decline application. Please try again.', 'error' => $e->getMessage()], 500);
+    }
+}
+
 
 }

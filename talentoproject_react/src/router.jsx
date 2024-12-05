@@ -42,6 +42,7 @@ import PasswordReset from './views/PasswordReset';
 import AboutUs from './views/AboutUs';
 import BookingClient from './views/BookingClient';
 import ChatApplicants from './views/ChatApplicants';
+import ChatClientPost from './views/ChatClientPost';
 
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -181,6 +182,10 @@ const router = createBrowserRouter([
       {
         path: 'BookingClient',
         element: <BookingClient/>
+      },
+      {
+        path: 'ChatClientPost',
+        element: <ChatClientPost/>
       }
     ]
   },

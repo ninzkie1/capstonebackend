@@ -260,7 +260,7 @@ export default function Portfolio() {
                             <div className="absolute bottom-0 left-4 md:left-6 transform translate-y-1/2">
                                 <Avatar
                                     src={performer?.user?.image_profile
-                                        ? `http://192.168.254.107:8000/storage/${performer.user.image_profile}?v=${imageVersion}`
+                                        ? `http://192.168.18.156:8000/storage/${performer.user.image_profile}?v=${imageVersion}`
                                         : profilePlaceholder}
                                     alt="Profile"
                                     sx={{ width: 80, height: 80, border: "4px solid white" }}
@@ -361,7 +361,7 @@ export default function Portfolio() {
                                                         <Avatar
                                                             src={
                                                                 review.user.image_profile
-                                                                    ? `http://192.168.254.107:8000/storage/${review.user.image_profile}`
+                                                                    ? `http://192.168.18.156:8000/storage/${review.user.image_profile}`
                                                                     : profilePlaceholder
                                                             }
                                                             alt={review.user.name}
@@ -402,7 +402,7 @@ export default function Portfolio() {
                                                             controls
                                                         >
                                                             <source
-                                                                src={`http://192.168.254.107:8000/storage/${video.highlight_video}`}
+                                                                src={`http://192.168.18.156:8000/storage/${video.highlight_video}`}
                                                                 type="video/mp4"
                                                             />
                                                         </video>

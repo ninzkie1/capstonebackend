@@ -1,47 +1,43 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom"; // For accessing passed state
 import axiosClient from "../axiosClient";
+import { useStateContext } from "../context/contextprovider";
 import {
   Box,
   Avatar,
-  Button,
-  TextField,
   Typography,
   IconButton,
   List,
   ListItem,
   ListItemAvatar,
   ListItemText,
-  useTheme,
+  TextField,
+  Button,
+  Paper,
   useMediaQuery,
 } from "@mui/material";
-import ChatIcon from "@mui/icons-material/Chat";
-import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { useStateContext } from "../context/contextprovider";
-import echo from "../echo";
+import { useTheme } from "@mui/material/styles";
 
 export default function ChatApplicants() {
   const theme = useTheme();
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
-  const isMediumScreen = useMediaQuery(theme.breakpoints.down("md"));
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("md"));
+  const { user } = useStateContext();
+  const location = useLocation(); // Access the passed state
+  const { userId } = location.state || {}; // Extract the userId from state
 
-  const { user } = useStateContext(); // Get the logged-in user
-  const [message, setMessage] = useState(""); // Current message input
-  const [messages, setMessages] = useState([]); // Chat messages
-  const [applicants, setApplicants] = useState([]); // Contact list for applicants
-  const [selectedApplicant, setSelectedApplicant] = useState(null); // Selected contact
-  const [isChatOpen, setIsChatOpen] = useState(false); // Toggle chat window
-  const [isSending, setIsSending] = useState(false); // Sending state
+  const [message, setMessage] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [applicants, setApplicants] = useState([]);
+  const [selectedApplicant, setSelectedApplicant] = useState(null);
 
-  // Fetch applicants who can chat
+  // Fetch all applicants who can chat
   useEffect(() => {
     const fetchApplicants = async () => {
       try {
         const response = await axiosClient.get("/performer/can-chat-applicants");
         if (response?.data?.status === "success") {
           setApplicants(response.data.data);
-        } else {
-          console.error("Unexpected response for applicants:", response);
         }
       } catch (error) {
         console.error("Error fetching applicants:", error);
@@ -51,10 +47,20 @@ export default function ChatApplicants() {
     fetchApplicants();
   }, []);
 
-  // Fetch messages for selected applicant
+  // Automatically select the user if userId is passed
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (selectedApplicant) {
+    if (userId && applicants.length > 0) {
+      const selected = applicants.find((applicant) => applicant.id === userId);
+      if (selected) {
+        handleApplicantClick(selected);
+      }
+    }
+  }, [userId, applicants]);
+
+  // Fetch messages for the selected applicant
+  useEffect(() => {
+    if (selectedApplicant) {
+      const fetchMessages = async () => {
         try {
           const response = await axiosClient.get("/chats", {
             params: {
@@ -62,35 +68,25 @@ export default function ChatApplicants() {
               contact_id: selectedApplicant.id,
             },
           });
-          setMessages(response.data || []);
+          setMessages(response.data);
         } catch (error) {
           console.error("Error fetching messages:", error);
-          setMessages([]);
         }
+      };
 
-        // Real-time message updates
-        echo.channel("chat-channel").listen(".message.sent", (e) => {
-          const newMessage = e.chat;
-          setMessages((prev) =>
-            prev.some((msg) => msg.id === newMessage.id)
-              ? prev
-              : [...prev, newMessage]
-          );
-        });
-
-        return () => {
-          echo.leaveChannel("chat-channel");
-        };
-      }
-    };
-
-    fetchMessages();
+      fetchMessages();
+    }
   }, [selectedApplicant, user.id]);
 
-  // Send message
+  // Handle applicant selection
+  const handleApplicantClick = (applicant) => {
+    setSelectedApplicant(applicant);
+    setMessages([]);
+  };
+
+  // Handle sending messages
   const handleSendMessage = async () => {
-    if (message.trim() && selectedApplicant) {
-      setIsSending(true);
+    if (message.trim() !== "" && selectedApplicant) {
       try {
         await axiosClient.post("/chats", {
           sender_id: user.id,
@@ -100,169 +96,135 @@ export default function ChatApplicants() {
         setMessage("");
       } catch (error) {
         console.error("Error sending message:", error);
-      } finally {
-        setIsSending(false);
       }
     }
   };
 
-  // Handle applicant selection
-  const handleSelectApplicant = (applicant) => {
-    setMessages([]);
-    setSelectedApplicant(applicant);
-  };
-
-  // Auto-scroll on new messages
-  useEffect(() => {
-    const chatArea = document.getElementById("chatArea");
-    if (chatArea) {
-      chatArea.scrollTop = chatArea.scrollHeight;
-    }
-  }, [messages]);
-
-  // Handle back button for small screen
-  const handleBackToApplicants = () => setSelectedApplicant(null);
-
   return (
-    <div>
-      {/* Chat Toggle Button */}
-      <IconButton
-        onClick={() => setIsChatOpen((prev) => !prev)}
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: isSmallScreen ? "column" : "row",
+        height: "85vh",
+      }}
+    >
+      {/* Applicants List */}
+      <Box
         sx={{
-          position: "fixed",
-          bottom: 16,
-          right: 16,
-          bgcolor: "blue",
+          width: isSmallScreen ? "100%" : "30%",
+          bgcolor: "primary.main",
           color: "white",
-          boxShadow: "0px 0px 10px rgba(0,0,0,0.3)",
-          "&:hover": { bgcolor: "darkblue" },
+          overflowY: "auto",
+          display: selectedApplicant && isSmallScreen ? "none" : "block",
+          p: 2,
         }}
       >
-        <ChatIcon />
-      </IconButton>
+        <Typography variant="h6" fontWeight="bold">
+          ClientPost
+        </Typography>
+        <List>
+          {applicants.map((applicant) => (
+            <ListItem
+              button
+              key={applicant.id}
+              onClick={() => handleApplicantClick(applicant)}
+            >
+              <ListItemAvatar>
+                <Avatar>{applicant.name?.[0]}</Avatar>
+              </ListItemAvatar>
+              <ListItemText primary={applicant.name} />
+            </ListItem>
+          ))}
+        </List>
+      </Box>
 
-      {/* Chat Window */}
-      {isChatOpen && (
+      {/* Chat Area */}
+      {selectedApplicant && (
         <Box
           sx={{
-            position: "fixed",
-            bottom: 70,
-            right: 16,
-            width: isSmallScreen ? "90%" : isMediumScreen ? "70%" : "400px",
-            height: isSmallScreen ? "70vh" : "500px",
-            bgcolor: "white",
-            boxShadow: 24,
-            borderRadius: "10px",
+            flex: 1,
             display: "flex",
             flexDirection: "column",
+            height: "100%",
+            p: 2,
+            bgcolor: "background.paper",
           }}
         >
           {/* Chat Header */}
           <Box
             sx={{
-              p: 2,
-              bgcolor: "blue",
-              color: "white",
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
+              borderBottom: "1px solid #ccc",
+              pb: 2,
+              mb: 2,
             }}
           >
-            {selectedApplicant ? (
-              <>
-                <IconButton onClick={handleBackToApplicants} sx={{ color: "white" }}>
-                  <ArrowBackIcon />
-                </IconButton>
-                <Typography variant="h6">{selectedApplicant.name}</Typography>
-              </>
-            ) : (
-              <Typography variant="h6">Applicants</Typography>
+            {isSmallScreen && (
+              <IconButton onClick={() => setSelectedApplicant(null)}>
+                <ArrowBackIcon />
+              </IconButton>
             )}
-            <IconButton sx={{ color: "white" }} onClick={() => setIsChatOpen(false)}>
-              <CloseIcon />
-            </IconButton>
+            <Typography variant="h6">{selectedApplicant.name}</Typography>
           </Box>
 
-          {/* Applicant List or Messages */}
-          <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
-            {selectedApplicant ? (
-              <div id="chatArea" style={{ maxHeight: "100%", overflowY: "auto" }}>
-                {messages.length > 0 ? (
-                  messages.map((msg, index) => (
-                    <Box
-                      key={index}
-                      sx={{
-                        display: "flex",
-                        mb: 2,
-                        justifyContent:
-                          msg.sender_id === user.id ? "flex-end" : "flex-start",
-                      }}
-                    >
-                      {msg.sender_id !== user.id && (
-                        <Avatar>{selectedApplicant.name?.[0] || "U"}</Avatar>
-                      )}
-                      <Box
-                        sx={{
-                          p: 2,
-                          borderRadius: "8px",
-                          bgcolor:
-                            msg.sender_id === user.id ? "#e0f7fa" : "#f1f1f1",
-                        }}
-                      >
-                        <Typography>{msg.message}</Typography>
-                      </Box>
-                    </Box>
-                  ))
-                ) : (
-                  <Typography>No messages yet.</Typography>
-                )}
-              </div>
+          {/* Messages */}
+          <Box
+            id="chatArea"
+            sx={{
+              flex: 1,
+              overflowY: "auto",
+              bgcolor: "grey.100",
+              p: 2,
+              mb: 2,
+              borderRadius: 2,
+            }}
+          >
+            {messages.length === 0 ? (
+              <Typography>No messages yet.</Typography>
             ) : (
-              <List>
-                {applicants.length > 0 ? (
-                  applicants.map((applicant) => (
-                    <ListItem
-                      key={applicant.id}
-                      button
-                      onClick={() => handleSelectApplicant(applicant)}
-                    >
-                      <ListItemAvatar>
-                        <Avatar>{applicant.name?.[0] || "U"}</Avatar>
-                      </ListItemAvatar>
-                      <ListItemText primary={applicant.name || "Unknown"} />
-                    </ListItem>
-                  ))
-                ) : (
-                  <Typography>No applicants available.</Typography>
-                )}
-              </List>
+              messages.map((msg, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    display: "flex",
+                    justifyContent:
+                      msg.sender_id === user.id ? "flex-end" : "flex-start",
+                    mb: 1.5,
+                  }}
+                >
+                  <Paper
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      maxWidth: "70%",
+                      bgcolor:
+                        msg.sender_id === user.id ? "primary.main" : "grey.300",
+                      color:
+                        msg.sender_id === user.id ? "white" : "text.primary",
+                    }}
+                  >
+                    {msg.message}
+                  </Paper>
+                </Box>
+              ))
             )}
           </Box>
 
           {/* Message Input */}
-          {selectedApplicant && (
-            <Box
-              sx={{ display: "flex", p: 2, borderTop: "1px solid #ccc" }}
-            >
-              <TextField
-                fullWidth
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Type a message"
-                disabled={isSending}
-              />
-              <Button
-                onClick={handleSendMessage}
-                variant="contained"
-                color="primary"
-                disabled={isSending}
-              >
-                {isSending ? "Sending..." : "Send"}
-              </Button>
-            </Box>
-          )}
+          <Box sx={{ display: "flex", borderTop: "1px solid #ccc", p: 2 }}>
+            <TextField
+              fullWidth
+              placeholder="Type a message"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+            />
+            <Button onClick={handleSendMessage} variant="contained" sx={{ ml: 2 }}>
+              Send
+            </Button>
+          </Box>
         </Box>
       )}
-    </div>
+    </Box>
   );
 }

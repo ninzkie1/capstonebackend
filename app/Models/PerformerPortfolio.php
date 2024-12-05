@@ -60,6 +60,10 @@ class PerformerPortfolio extends Model
 {
     return $this->hasMany(Applications::class, 'performer_id');
 }
+public function performerDetails()
+{
+    return $this->belongsTo(User::class, 'performer_id');
+}
 
 
 

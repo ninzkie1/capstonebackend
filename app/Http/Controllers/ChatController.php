@@ -10,6 +10,8 @@ use App\Models\PerformerPortfolio;
 use Illuminate\Support\Facades\Log;
 use App\Models\BookingPerformer;
 use App\Models\Applications;
+use App\Models\Post;
+use App\Models\User;
 
 class ChatController extends Controller
 {
@@ -161,5 +163,35 @@ public function canChatApplicants()
         return response()->json(['error' => 'An error occurred. Please try again.'], 500);
     }
 }
+public function canChatPostClient()
+{
+    try {
+        // Get the authenticated client user
+        $clientId = Auth::id();
+
+        // Retrieve all posts created by the authenticated client
+        $clientPosts = Post::where('user_id', $clientId)->pluck('id');
+
+        // Ensure the client has posts
+        if ($clientPosts->isEmpty()) {
+            return response()->json(['error' => 'No posts found for this client.'], 404);
+        }
+
+        // Retrieve all applications where the post belongs to the client and the message is 'ENABLED'
+        $applications = Applications::whereIn('post_id', $clientPosts)
+            ->where('message', 'ENABLED') // Check if the message is 'ENABLED'
+            ->with(['performer.performerDetails']) // Load related performer details
+            ->get();
+
+        // Extract unique performer details from the applications
+        $performers = $applications->pluck('performer.performerDetails')->unique('id')->values();
+
+        return response()->json(['status' => 'success', 'data' => $performers], 200);
+    } catch (\Exception $e) {
+        Log::error("Error checking chat availability for post clients: " . $e->getMessage());
+        return response()->json(['error' => 'An error occurred. Please try again.'], 500);
+    }
+}
+
 
 }

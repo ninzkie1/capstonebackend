@@ -22,7 +22,7 @@ export default function HomePage() {
 
     useEffect(() => {
         axiosClient
-            .get("http://192.168.254.116:8000/api/performer")
+            .get("http://192.168.18.156:8000/api/performer")
             .then((response) => {
                 setPerformers(response.data);
                 setIsMuted(response.data.map(() => true));
@@ -193,7 +193,7 @@ export default function HomePage() {
                                     >
                                         <video
                                             className="w-full h-48 object-cover group-hover:scale-110 group-hover:opacity-80 transition-transform duration-500"
-                                            src={`http://192.168.254.116:8000/storage/${performer.performer_portfolio.highlights[0].highlight_video}`}
+                                            src={`http://192.168.18.156:8000/storage/${performer.performer_portfolio.highlights[0].highlight_video}`}
                                             autoPlay
                                             loop
                                             muted={isMuted[index]}
@@ -237,7 +237,7 @@ export default function HomePage() {
                                         className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-md transition-transform transform hover:scale-105 hover:shadow-xl"
                                     >
                                         <img
-                                            src={`http://192.168.254.116:8000/storage/${performer.image_profile}`}
+                                            src={`http://192.168.18.156:8000/storage/${performer.image_profile}`}
                                             alt={performer.name}
                                             className="w-full h-40 object-cover"
                                         />

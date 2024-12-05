@@ -255,7 +255,7 @@ export default function AddBook() {
             <Avatar
                 src={
                     performer?.image_profile
-                        ? `http://192.168.254.107:8000/storage/${performer.image_profile}`
+                        ? `http://192.168.18.156:8000/storage/${performer.image_profile}`
                         : ''
                 }
                 alt={performer?.name || ''}

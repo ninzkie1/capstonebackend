@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "../axiosClient";
+import axiosClient from "../axiosClient";
 import {
   Box,
   Table,
@@ -16,9 +16,11 @@ import {
 import dayjs from "dayjs";
 import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import ChatClientPost from "./ChatClientPost";
 
 export default function Applications() {
   const [applications, setApplications] = useState([]);
+  const [loadingAction, setLoadingAction] = useState(false); // For processing status
   const isMobile = useMediaQuery("(max-width:600px)");
 
   useEffect(() => {
@@ -27,11 +29,7 @@ export default function Applications() {
 
   const fetchApplications = async () => {
     try {
-      const response = await axios.get("/getApplicants", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      });
+      const response = await axiosClient.get("/getApplicants");
       setApplications(response.data);
     } catch (error) {
       console.error("Error fetching applications:", error);
@@ -40,52 +38,38 @@ export default function Applications() {
   };
 
   const handleApprove = async (applicationId) => {
+    setLoadingAction(true);
     try {
-      const response = await axios.put(
-        `/applications/${applicationId}/approve`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-      if (response.status === 200) {
+      const response = await axiosClient.put(`/applications/${applicationId}/approve`);
+      if (response.status === 200 || response.status === 201) {
         toast.success("Application approved.");
-        fetchApplications();
+        fetchApplications(); // Refresh the applications list
       } else {
         toast.error("Failed to approve application. Unexpected response.");
       }
     } catch (error) {
       console.error("Error approving application:", error.response || error);
-      toast.error(
-        error.response?.data?.error || "Failed to approve application."
-      );
+      toast.error(error.response?.data?.message || "Failed to approve application.");
+    } finally {
+      setLoadingAction(false);
     }
   };
 
   const handleReject = async (applicationId) => {
+    setLoadingAction(true);
     try {
-      const response = await axios.put(
-        `/applications/${applicationId}/reject`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-      if (response.status === 200) {
+      const response = await axiosClient.put(`/applications/${applicationId}/decline`);
+      if (response.status === 200 || response.status === 201) {
         toast.success("Application rejected.");
-        fetchApplications();
+        fetchApplications(); // Refresh the applications list
       } else {
         toast.error("Failed to reject application. Unexpected response.");
       }
     } catch (error) {
       console.error("Error rejecting application:", error.response || error);
-      toast.error(
-        error.response?.data?.error || "Failed to reject application."
-      );
+      toast.error(error.response?.data?.message || "Failed to reject application.");
+    } finally {
+      setLoadingAction(false);
     }
   };
 
@@ -94,7 +78,7 @@ export default function Applications() {
       sx={{
         width: "100%",
         mt: 3,
-        backgroundColor: "#f59e0b", // Match Dashboard style
+        backgroundColor: "#f59e0b",
         padding: "20px",
         borderRadius: "12px",
         marginBottom: "30px",
@@ -147,15 +131,18 @@ export default function Applications() {
                   </Typography>
                   <Typography>
                     <strong>Requested On:</strong>{" "}
-                    {dayjs(application.requested_on).format(
-                      "MMM DD, YYYY h:mm A"
-                    )}
+                    {dayjs(application.requested_on).format("MMM DD, YYYY h:mm A")}
                   </Typography>
                   <Typography>
                     <strong>Status:</strong>{" "}
                     <span
                       style={{
-                        backgroundColor: "#FBBF24",
+                        backgroundColor:
+                          application.status === "APPROVED"
+                            ? "#28a745"
+                            : application.status === "DECLINED"
+                            ? "#dc3545"
+                            : "#FBBF24",
                         color: "white",
                         padding: "4px 8px",
                         borderRadius: "8px",
@@ -165,30 +152,34 @@ export default function Applications() {
                       {application.status}
                     </span>
                   </Typography>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      marginTop: 2,
-                    }}
-                  >
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      onClick={() => handleApprove(application.id)}
+                  {application.status === "PENDING" && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginTop: 2,
+                      }}
                     >
-                      Approve
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="error"
-                      size="small"
-                      onClick={() => handleReject(application.id)}
-                    >
-                      Reject
-                    </Button>
-                  </Box>
+                      <Button
+                        variant="contained"
+                        color="success"
+                        size="small"
+                        onClick={() => handleApprove(application.id)}
+                        disabled={loadingAction}
+                      >
+                        {loadingAction ? "Processing..." : "Approve"}
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        onClick={() => handleReject(application.id)}
+                        disabled={loadingAction}
+                      >
+                        {loadingAction ? "Processing..." : "Reject"}
+                      </Button>
+                    </Box>
+                  )}
                 </Box>
               ))
             ) : (
@@ -217,14 +208,17 @@ export default function Applications() {
                     <TableCell>{application.posts_theme}</TableCell>
                     <TableCell>{application.performer_talent}</TableCell>
                     <TableCell>
-                      {dayjs(application.requested_on).format(
-                        "MMM DD, YYYY h:mm A"
-                      )}
+                      {dayjs(application.requested_on).format("MMM DD, YYYY h:mm A")}
                     </TableCell>
                     <TableCell>
                       <span
                         style={{
-                          backgroundColor: "#FBBF24",
+                          backgroundColor:
+                            application.status === "APPROVED"
+                              ? "#28a745"
+                              : application.status === "DECLINED"
+                              ? "#dc3545"
+                              : "#FBBF24",
                           color: "white",
                           padding: "4px 8px",
                           borderRadius: "8px",
@@ -235,24 +229,28 @@ export default function Applications() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ display: "flex", gap: 1 }}>
-                        <Button
-                          variant="contained"
-                          color="success"
-                          size="small"
-                          onClick={() => handleApprove(application.id)}
-                        >
-                          Approve
-                        </Button>
-                        <Button
-                          variant="contained"
-                          color="error"
-                          size="small"
-                          onClick={() => handleReject(application.id)}
-                        >
-                          Reject
-                        </Button>
-                      </Box>
+                      {application.status === "PENDING" && (
+                        <Box sx={{ display: "flex", gap: 1 }}>
+                          <Button
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            onClick={() => handleApprove(application.id)}
+                            disabled={loadingAction}
+                          >
+                            {loadingAction ? "Processing..." : "Approve"}
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="error"
+                            size="small"
+                            onClick={() => handleReject(application.id)}
+                            disabled={loadingAction}
+                          >
+                            {loadingAction ? "Processing..." : "Reject"}
+                          </Button>
+                        </Box>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -267,6 +265,9 @@ export default function Applications() {
           </Table>
         )}
       </TableContainer>
+      <div className="fixed bottom-6 right-6 z-50">
+        <ChatClientPost />
+      </div>
     </Box>
   );
 }

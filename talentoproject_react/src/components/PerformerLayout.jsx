@@ -49,6 +49,8 @@ export default function PerformerLayout() {
         return "Dashboard";
       case "/performer-wallet":
         return "Performer Wallet";
+      case "/chatapplicants":
+        return "Chat Post Clients";
       default:
         return "Performer Dashboard";
     }
@@ -90,7 +92,7 @@ export default function PerformerLayout() {
         <Avatar
           src={
             performer?.user?.image_profile
-              ? `http://192.168.254.107:8000/storage/${performer.user.image_profile}`
+              ? `http://192.168.18.156:8000/storage/${performer.user.image_profile}`
               : Logo
           }
           alt="Profile Image"
