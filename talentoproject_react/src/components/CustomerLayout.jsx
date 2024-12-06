@@ -13,7 +13,6 @@ import {
   Edit as EditIcon,
   Menu as MenuIcon,
 } from "@mui/icons-material";
-import MessageIcon from '@mui/icons-material/Message';
 import logo from "../assets/logotalentos.png";
 
 export default function CustomerLayout() {
@@ -45,13 +44,14 @@ export default function CustomerLayout() {
     handleMenuClose();
   };
 
-  const handleMessages = () => {
-    navigate("/messages");
-    handleMenuClose();
-  };
+ 
 
   const handleEditProfile = () => {
     navigate("/customer-profile");
+    handleMenuClose();
+  };
+  const handleComplain = () => {
+    navigate("/complainproblem");
     handleMenuClose();
   };
 
@@ -130,9 +130,9 @@ export default function CustomerLayout() {
           <ProfileIcon className="mr-2 text-blue-900" />
           View Profile
         </MenuItem>
-        <MenuItem onClick={handleMessages} className="hover:bg-yellow-400 transition-colors duration-300">
-          <MessageIcon className="mr-2 text-blue-900" />
-          Messages
+        <MenuItem onClick={handleComplain} className="hover:bg-yellow-400 transition-colors duration-300">
+          <ProfileIcon className="mr-2 text-blue-900" />
+          Report a Problem
         </MenuItem>
         <MenuItem onClick={handleLogout} className="hover:bg-yellow-400 transition-colors duration-300">
           <LogoutIcon className="mr-2 text-blue-900" />
@@ -185,12 +185,6 @@ export default function CustomerLayout() {
                     <ProfileIcon style={{ color: '#FFFFFF' }} />
                   </ListItemIcon>
                   <ListItemText primary="View Profile" />
-                </ListItem>
-                <ListItem button onClick={() => navigate("/messages")} sx={{ color: '#FFFFFF' }}>
-                  <ListItemIcon>
-                    <MessageIcon style={{ color: '#FFFFFF' }} />
-                  </ListItemIcon>
-                  <ListItemText primary="Messages" />
                 </ListItem>
                 <ListItem button onClick={handleLogout} sx={{ color: '#FFFFFF' }}>
                   <ListItemIcon>

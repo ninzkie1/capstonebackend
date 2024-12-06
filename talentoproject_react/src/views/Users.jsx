@@ -123,7 +123,7 @@ export default function Users() {
 
   // Filter users by their roles
   const performers = users.filter(user => user.role === "performer");
-  const clients = users.filter(user => user.role === "client" || user.role === "customer");
+  const clients = users.filter(user => user.role === "client" || user.role === "client");
 
   return (
     <div className="container mx-auto p-6">
@@ -300,7 +300,7 @@ export default function Users() {
                   className="w-full px-3 py-2 border rounded">
                   <option value="performer">Performer</option>
                   <option value="admin">Admin</option>
-                  <option value="customer">Customer</option>
+                  <option value="client">Client</option>
                 </select>
                 {validationErrors.role && (
                   <p className="text-red-500 text-sm">{validationErrors.role[0]}</p>

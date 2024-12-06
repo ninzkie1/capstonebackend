@@ -36,7 +36,7 @@ class AdminController extends Controller
 }
 
 
-    // Create a new user
+    // edit a user
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -44,7 +44,7 @@ class AdminController extends Controller
             'lastname' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6',
-            'role' => 'required|in:admin,performer,customer',
+            'role' => 'required|in:admin,performer,client',
         ]);
 
         if ($validator->fails()) {
@@ -87,8 +87,8 @@ class AdminController extends Controller
         'name' => 'string|max:255',
         'lastname' => 'string|max:255',
         'email' => 'email|unique:users,email,' . $id,
-        'password' => 'string|min:6',
-        'role' => 'in:admin,performer,customer',
+        'password' => 'string|min:8',
+        'role' => 'in:admin,performer,client',
     ], $messages);
 
     if ($validator->fails()) {
@@ -107,7 +107,8 @@ class AdminController extends Controller
     }
 
     if ($request->has('password')) {
-        $user->password = $request->password; 
+        // Ensure the password is hashed before saving
+        $user->password = bcrypt($request->password);
     }
 
     if ($request->has('role')) {

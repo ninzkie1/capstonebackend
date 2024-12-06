@@ -15,6 +15,7 @@ use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\ComplaintsController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\PerformerApplicationController;
@@ -57,6 +58,7 @@ Route::group(['middleware' => ['auth:sanctum', 'admin']], function () {
     Route::put('/performer-applications/{id}/approve', [PerformerApplicationController::class, 'approve']);
     Route::put('/performer-applications/{id}/reject', [PerformerApplicationController::class, 'reject']);
     Route::get('/admin/summary-report', [AdminController::class, 'getSummaryReport']);
+   
 });
 
 
@@ -175,6 +177,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/client/can-chat-client', [ChatController::class, 'canChatPostClient']);
     Route::put('applications/{applicationId}/approve', [ApplicationsController::class, 'approve']);
     Route::put('applications/{applicationId}/decline', [ApplicationsController::class, 'decline']);
+    Route::post('/complaints', [ComplaintsController::class, 'store']); // User submits a complaint
+    Route::get('/complaints', [ComplaintsController::class, 'index']); // Admin fetches all complaints
+    Route::put('/complaints/{id}/respond', [ComplaintsController::class, 'respond']); // Admin responds to a complaint
 
     //get pending bookings for all authenticated users
     Route::get('/getPendingBookings', [BookingController::class, 'getPendingBookings']);

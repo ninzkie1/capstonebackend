@@ -51,8 +51,10 @@ export default function AdminLayout() {
         return "Manage Feedback";
       case "/users":
         return "Users";
-        case "/PendingPerformers":
+      case "/PendingPerformers":
         return "Manage Performer";
+      case "/complaints":
+          return "User Complaints";
       default:
         return "Talento Admin Dashboard";
     }
@@ -119,6 +121,7 @@ export default function AdminLayout() {
         {[
           { text: "Post", icon:<CampaignIcon />, route: "/ManagePost" },
           { text: "Reporting", icon: <ChartBarIcon />, route: "/reports" },
+          { text: "User Complaints", icon:<UserCircleIcon />, route: "/complaints" },
           { text: "Bookings", icon: <BriefcaseIcon />, route: "/ManageBooking" },
           { text: "TalentoCoins", icon: <BriefcaseIcon />, route: "/CoinRequest" },
           { text: "Feedback", icon: <UserCircleIcon />, route: "/Performers" },
@@ -131,7 +134,7 @@ export default function AdminLayout() {
             key={index}
             onClick={item.route ? () => navigateTo(item.route) : item.action}
             sx={{
-              paddingY: 1.5,  
+              paddingY: 1,  
               paddingX: 2.5,
               "&:hover": {
                 backgroundColor: theme.palette.action.hover,

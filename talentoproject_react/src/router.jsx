@@ -43,6 +43,9 @@ import AboutUs from './views/AboutUs';
 import BookingClient from './views/BookingClient';
 import ChatApplicants from './views/ChatApplicants';
 import ChatClientPost from './views/ChatClientPost';
+import Complaints from './views/Complaints';
+import UserComplaint from './views/UserComplaint';
+import PerformerComplaint from './views/PerformerComplaint';
 
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -126,6 +129,10 @@ const router = createBrowserRouter([
       {
         path: 'performer-wallet',
         element : <WalletPerformer/>
+      },
+      {
+        path: 'Complainaproblem',
+        element:<PerformerComplaint/>
       }
     ]
   },
@@ -186,6 +193,10 @@ const router = createBrowserRouter([
       {
         path: 'ChatClientPost',
         element: <ChatClientPost/>
+      },
+      {
+        path: 'Complainproblem',
+        element:<UserComplaint/>
       }
     ]
   },
@@ -227,7 +238,11 @@ const router = createBrowserRouter([
       {
         path: 'PendingPerformers',
         element: <PendingPerformer/>
-      }
+      },
+      {
+        path: 'Complaints',
+        element: <Complaints/>
+       },
     ]
   },
 
@@ -263,7 +278,9 @@ const router = createBrowserRouter([
      {
       path: 'Notify',
       element: <UserNotification/>
-     }
+     },
+    
+
     ]
   },
   {

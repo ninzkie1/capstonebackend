@@ -126,7 +126,7 @@ export default function ViewPortfolio() {
                                 <img
                                     src={
                                         performer.user?.image_profile
-                                            ? `http://192.168.18.156:8000/storage/${performer.user.image_profile}`
+                                            ? `http://192.168.254.110:8000/storage/${performer.user.image_profile}`
                                             : profilePlaceholder
                                     }
                                     alt="Profile Photo"

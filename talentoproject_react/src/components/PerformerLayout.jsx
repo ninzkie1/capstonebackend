@@ -92,7 +92,7 @@ export default function PerformerLayout() {
         <Avatar
           src={
             performer?.user?.image_profile
-              ? `http://192.168.18.156:8000/storage/${performer.user.image_profile}`
+              ? `http://192.168.17.120:8000/storage/${performer.user.image_profile}`
               : Logo
           }
           alt="Profile Image"
@@ -128,6 +128,7 @@ export default function PerformerLayout() {
           { text: "Messages", icon: <ChatBubbleIcon />, route: "/chat" },
           { text: "Dashboard", icon: <DashboardIcon />, route: "/booking" },
           { text: "Wallet", icon: <WalletIcon />, route: "/performer-wallet" },
+          { text: "Report a Problem", icon: <CampaignIcon />, route: "/Complainaproblem" },
           { text: "Log Out", icon: <PowerIcon />, action: onLogout },
         ].map((item, index) => (
           <ListItem
@@ -135,7 +136,7 @@ export default function PerformerLayout() {
             key={index}
             onClick={item.route ? () => navigateTo(item.route) : item.action}
             sx={{
-              paddingY: 3,
+              paddingY: 2.5,
               paddingX: 2.5,
               "&:hover": {
                 backgroundColor: theme.palette.action.hover,
@@ -215,7 +216,7 @@ export default function PerformerLayout() {
             top: 0,
             left: 0,
             height: "100vh",
-            paddingTop: "64px",
+            paddingTop: "50px",
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
