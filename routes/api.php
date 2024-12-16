@@ -67,6 +67,8 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/logout', [AuthController::class, 'logout']);
 Route::post('/users', [UserController::class, 'store']);
 Route::get('/users/{id}', [UserController::class, 'getUser']);
+Route::get('/users/{id}/profile-image', [UserController::class, 'fetchUserProfileImage']);
+Route::get('/users/profile-images', [UserController::class, 'fetchAllUserProfileImages']);
 
 
 
@@ -180,7 +182,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/complaints', [ComplaintsController::class, 'store']); // User submits a complaint
     Route::get('/complaints', [ComplaintsController::class, 'index']); // Admin fetches all complaints
     Route::put('/complaints/{id}/respond', [ComplaintsController::class, 'respond']); // Admin responds to a complaint
-
+    Route::get('/user/profile', [UserController::class, 'fetchAuthenticatedUserProfile']);
     //get pending bookings for all authenticated users
     Route::get('/getPendingBookings', [BookingController::class, 'getPendingBookings']);
 

@@ -11,6 +11,8 @@ class UnavailableDate extends Model
     protected $fillable = [
         'performer_id',
         'unavailable_date',
+        'start_time',
+        'end_time',
     ];
 
     // Relationship to User

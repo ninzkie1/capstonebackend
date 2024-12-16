@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:5173','http://192.168.254.116:8000','http:// 192.168.254.107:5173','http://192.168.208.120:5173','http://192.168.208.120:8000', 'http://192.168.17.120:8000', 'http://192.168.17.120:5173'], // Add your frontend URL here
+    'allowed_origins' => ['http://localhost:5173','http://localhost:8000','http://192.168.254.116:8000','http:// 192.168.254.107:5173','http://192.168.208.120:5173','http://192.168.208.120:8000', 'http://192.168.254.115:8000', 'http://192.168.254.115:5173'], // Add your frontend URL here
 
     'allowed_origins_patterns' => [],
 

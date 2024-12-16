@@ -73,6 +73,10 @@ export default function ViewPortfolio() {
             toast.error("Please provide a rating of at least 1 star.");
             return;
         }
+        if(newFeedback.review.length < 1){
+            toast.error("Please provide a feedback of at least 1 word.");
+            return;
+        }
 
         axiosClient
             .post(`/performers/${portfolioId}/rate`, newFeedback)
@@ -126,7 +130,7 @@ export default function ViewPortfolio() {
                                 <img
                                     src={
                                         performer.user?.image_profile
-                                            ? `http://192.168.254.110:8000/storage/${performer.user.image_profile}`
+                                            ? `http://192.168.254.115:8000/storage/${performer.user.image_profile}`
                                             : profilePlaceholder
                                     }
                                     alt="Profile Photo"

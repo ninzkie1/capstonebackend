@@ -19,7 +19,7 @@ class FeedbackController extends Controller
         // Validate the request input
         $request->validate([
             'rating' => 'required|numeric|min:1|max:5',
-            'review' => 'nullable|string',
+            'review' => 'required|nullable|string',
         ]);
     
         try {

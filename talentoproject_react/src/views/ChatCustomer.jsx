@@ -27,12 +27,14 @@ export default function ChatCustomer() {
 
   const { user } = useStateContext(); // Get the logged-in user
   const [message, setMessage] = useState(""); // Current message input
+  const [isInputDisabled, setIsInputDisabled] = useState(false); // To temporarily disable input
   const [messages, setMessages] = useState([]); // Chat messages
   const [contacts, setContacts] = useState([]); // Contact list
   const [selectedUser, setSelectedUser] = useState(null); // Selected contact
   const [isChatOpen, setIsChatOpen] = useState(false); // Toggle chat window
   const [isContactSelected, setIsContactSelected] = useState(false); // Contact/chat toggle
   const [isSending, setIsSending] = useState(false); // Sending state
+  const [tempError, setTempError] = useState(""); // Temporary error message
 
   // Fetch contacts based on user role
   useEffect(() => {
@@ -106,20 +108,33 @@ export default function ChatCustomer() {
 
   // Send message
   const handleSendMessage = async () => {
-    if (message.trim() && selectedUser) {
-      setIsSending(true);
-      try {
-        await axiosClient.post("/chats", {
-          sender_id: user.id,
-          receiver_id: selectedUser.id,
-          message,
-        });
-        setMessage("");
-      } catch (error) {
-        console.error("Error sending message:", error);
-      } finally {
-        setIsSending(false);
-      }
+    if (!message.trim()) {
+      // Show the error in the chatbox temporarily
+      setTempError("Message cannot be empty");
+      setIsInputDisabled(true); // Disable input temporarily
+      setTimeout(() => {
+        setTempError(""); // Clear the error after 2 seconds
+        setIsInputDisabled(false); // Re-enable input
+      }, 2000);
+      return; // Stop further execution
+    }
+
+    setIsSending(true);
+    try {
+      await axiosClient.post("/chats", {
+        sender_id: user.id,
+        receiver_id: selectedUser.id,
+        message,
+      });
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { sender_id: user.id, message }, // Add the sent message to the chatbox
+      ]);
+      setMessage(""); // Clear input after sending
+    } catch (error) {
+      console.error("Error sending message:", error);
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -185,7 +200,10 @@ export default function ChatCustomer() {
           >
             {isContactSelected ? (
               <>
-                <IconButton onClick={handleBackToContacts} sx={{ color: "white" }}>
+                <IconButton
+                  onClick={handleBackToContacts}
+                  sx={{ color: "white" }}
+                >
                   <ArrowBackIcon />
                 </IconButton>
                 <Typography variant="h6">{selectedUser.name}</Typography>
@@ -193,7 +211,10 @@ export default function ChatCustomer() {
             ) : (
               <Typography variant="h6">Contacts</Typography>
             )}
-            <IconButton sx={{ color: "white" }} onClick={() => setIsChatOpen(false)}>
+            <IconButton
+              sx={{ color: "white" }}
+              onClick={() => setIsChatOpen(false)}
+            >
               <CloseIcon />
             </IconButton>
           </Box>
@@ -220,6 +241,27 @@ export default function ChatCustomer() {
               )
             ) : (
               <div id="chatArea" style={{ maxHeight: "100%", overflowY: "auto" }}>
+                {/* Render the temporary error */}
+                {tempError && (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "center",
+                      mb: 2,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        color: "red",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      {tempError}
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Render the chat messages */}
                 {messages.map((msg, index) => (
                   <Box
                     key={index}
@@ -237,7 +279,8 @@ export default function ChatCustomer() {
                       sx={{
                         p: 2,
                         borderRadius: "8px",
-                        bgcolor: msg.sender_id === user.id ? "#e0f7fa" : "#f1f1f1",
+                        bgcolor:
+                          msg.sender_id === user.id ? "#e0f7fa" : "#f1f1f1",
                       }}
                     >
                       <Typography>{msg.message}</Typography>
@@ -255,7 +298,7 @@ export default function ChatCustomer() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Type a message"
-                disabled={isSending}
+                disabled={isInputDisabled || isSending} // Disable input when error or sending
               />
               <Button
                 onClick={handleSendMessage}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axiosClient from "../axiosClient";
+import Logo from "../assets/logotalentos.png";
 import {
   Box,
   Typography,
@@ -16,6 +17,7 @@ import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import { useStateContext } from "../context/contextprovider";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
+
 
 export default function Post() {
   const talents = ["Singer", "Dancer", "Musician", "Band", "Entertainer", "DJ"];
@@ -305,16 +307,24 @@ export default function Post() {
             <Card key={post.id} sx={{ marginTop: 3, borderRadius: 2, backgroundColor: "#F5F5F5" }}>
               <CardContent>
                 <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                  <Avatar
-                    src={post.user?.image_profile || ""}
-                    alt={post.client_name}
-                    sx={{
-                      marginRight: 2,
-                      backgroundColor: "#0D47A1",
-                    }}
-                  >
-                    <AccountCircleIcon />
-                  </Avatar>
+                <Avatar
+                src={
+                  post.user?.image_profile
+                    ? `http://192.168.254.115:8000/storage/${post.user.image_profile}`
+                    : Logo
+                }
+                alt={post.client_name}
+                sx={{
+                  marginRight: 2,
+                  width: 48,
+                  height: 48,
+                  backgroundColor: post.user?.image_profile ? "transparent" : "#0D47A1",
+                }}
+              >
+                {!post.user?.image_profile && <AccountCircleIcon />}
+              </Avatar>
+
+
                   <Typography variant="h6" fontWeight="bold" color="#0D47A1">
                     {post.client_name}
                   </Typography>
@@ -430,6 +440,32 @@ export default function Post() {
                       </Typography>
                     )}
                   </Box>
+                  <Box sx={{ mt: 2 }}>
+                      <TextField
+                        label="Add a comment"
+                        variant="outlined"
+                        fullWidth
+                        value={comments[post.id] || ""}
+                        onChange={(e) =>
+                          setComments((prevComments) => ({
+                            ...prevComments,
+                            [post.id]: e.target.value,
+                          }))
+                        }
+                        sx={{
+                          mb: 1,
+                          backgroundColor: "white",
+                        }}
+                      />
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => handleCommentSubmit(post.id)}
+                        disabled={!comments[post.id]?.trim()}
+                      >
+                        Submit Comment
+                      </Button>
+                    </Box>
               </CardContent>
             </Card>
           ))

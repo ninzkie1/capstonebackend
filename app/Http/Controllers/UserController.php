@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 
 class UserController extends Controller
@@ -121,6 +122,71 @@ public function getAdmin()
     $users = User::where('role', 'admin')->get();
     return response()->json($users);
 }
+ // Fetch profile image of a specific user
+ public function fetchUserProfileImage($id)
+ {
+     // Find the user by ID
+     $user = User::find($id);
+
+     if (!$user) {
+         return response()->json(['message' => 'User not found'], 404);
+     }
+
+     // Check if the user has a profile image
+     $imageUrl = $user->image_profile 
+         ? asset('storage/' . $user->image_profile) 
+         : null;
+
+     return response()->json([
+         'id' => $user->id,
+         'name' => $user->name,
+         'image_url' => $imageUrl,
+         'message' => $imageUrl ? 'Profile image retrieved successfully' : 'No profile image available',
+     ]);
+ }
+
+ // Fetch profile images for all users
+ public function fetchAllUserProfileImages()
+ {
+     // Retrieve all users
+     $users = User::select('id', 'name', 'image_profile')->get();
+
+     // Map user data with profile image URL
+     $usersWithImages = $users->map(function ($user) {
+         return [
+             'id' => $user->id,
+             'name' => $user->name,
+             'image_url' => $user->image_profile 
+                 ? asset('storage/' . $user->image_profile) 
+                 : null,
+         ];
+     });
+
+     return response()->json([
+         'users' => $usersWithImages,
+         'message' => 'User profile images retrieved successfully',
+     ]);
+ }
+ public function fetchAuthenticatedUserProfile()
+    {
+        // Get the authenticated user
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not authenticated'], 401);
+        }
+
+        // Return the user's profile data, including the profile image URL
+        return response()->json([
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'image_url' => $user->image_profile 
+                ? asset('storage/' . $user->image_profile)
+                : null,
+            'message' => 'Authenticated user profile fetched successfully',
+        ]);
+    }
 
 
 }

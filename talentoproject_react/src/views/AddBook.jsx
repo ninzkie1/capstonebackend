@@ -163,13 +163,39 @@ export default function AddBook() {
       [name]: value,
     }));
   };
+  const validateDateAndTime = () => {
+    const now = dayjs().tz('Asia/Manila');
+    const selectedStartDateTime = dayjs(`${formData.startDate}T${formData.startTime}`).tz('Asia/Manila');
+    const selectedEndDateTime = dayjs(`${formData.startDate}T${formData.endTime}`).tz('Asia/Manila');
+
+    if (!formData.startDate || !formData.startTime || !formData.endTime) {
+      return 'All date and time fields are required.';
+    }
+
+    if (selectedStartDateTime.isBefore(now)) {
+      return 'Start date and time cannot be in the past.';
+    }
+
+    if (selectedEndDateTime.isBefore(selectedStartDateTime)) {
+      return 'End time cannot be earlier than start time.';
+    }
+
+    return null;
+  };
+
 
   // Handle modal open
   const handleOpenModal = () => {
+    const error = validateDateAndTime();
+    if (error) {
+      toast.error(error);
+      return;
+    }
     const cost = performers.reduce((acc, performer) => acc + (performer.performer_portfolio.rate || 0), 0);
     setTotalCost(cost);
     setIsModalOpen(true);
   };
+  
 
   // Handle modal close
   const handleCloseModal = () => {
@@ -255,7 +281,7 @@ export default function AddBook() {
             <Avatar
                 src={
                     performer?.image_profile
-                        ? `http://192.168.17.120:8000/storage/${performer.image_profile}`
+                        ? `http://192.168.254.115:8000/storage/${performer.image_profile}`
                         : ''
                 }
                 alt={performer?.name || ''}

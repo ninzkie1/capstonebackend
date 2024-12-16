@@ -39,24 +39,26 @@ class ChatController extends Controller
 
     // Store a new chat message
     public function store(Request $request)
-    {
-        $request->validate([
-            'sender_id' => 'required|exists:users,id',
-            'receiver_id' => 'required|exists:users,id',
-            'message' => 'required|string|max:255',
-        ]);
+            {
+                $request->validate([
+                    'sender_id' => 'required|exists:users,id',
+                    'receiver_id' => 'required|exists:users,id',
+                    'message' => 'required|string|max:255',
+                ], [
+                    'message.required' => 'The message cannot be empty.',
+                ]);
 
-        $chat = new Chat();
-        $chat->sender_id = $request->sender_id;
-        $chat->receiver_id = $request->receiver_id;
-        $chat->message = $request->message;
-        $chat->save();
+                $chat = new Chat();
+                $chat->sender_id = $request->sender_id;
+                $chat->receiver_id = $request->receiver_id;
+                $chat->message = $request->message;
+                $chat->save();
 
-        // Fire the event to broadcast the message
-        broadcast(new MessageSent($chat))->toOthers();
+                // Fire the event to broadcast the message
+                broadcast(new MessageSent($chat))->toOthers();
 
-        return response()->json($chat, 201);
-    }
+                return response()->json($chat, 201);
+            }
 
     public function canChat($clientId)
     {

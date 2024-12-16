@@ -46,6 +46,7 @@ import ChatClientPost from './views/ChatClientPost';
 import Complaints from './views/Complaints';
 import UserComplaint from './views/UserComplaint';
 import PerformerComplaint from './views/PerformerComplaint';
+import Availability from './views/Availability';
 
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -133,6 +134,10 @@ const router = createBrowserRouter([
       {
         path: 'Complainaproblem',
         element:<PerformerComplaint/>
+      },
+      {
+        path: 'set-availability',
+        element: <Availability/>
       }
     ]
   },

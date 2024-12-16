@@ -23,5 +23,5 @@ Route::get('password-reset/{token}', function ($token) {
     if (!$email) {
         return response()->json(['message' => 'Missing email address'], 400);
     }
-    return redirect("http://192.168.254.107:5173/password-reset?token={$token}&email={$email}");
+    return redirect("http://192.168.254.115:5173/password-reset?token={$token}&email={$email}");
 })->name('password.reset');

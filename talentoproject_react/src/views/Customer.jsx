@@ -186,7 +186,7 @@ export default function Customer() {
                                         <div className="relative">
                                             <video
                                                 className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-500"
-                                                src={`http://192.168.254.110:8000/storage/${performer.performer_portfolio.highlights[0].highlight_video}`}
+                                                src={`http://192.168.254.115:8000/storage/${performer.performer_portfolio.highlights[0].highlight_video}`}
                                                 autoPlay
                                                 loop
                                                 muted={isMuted[index]}
@@ -199,14 +199,14 @@ export default function Customer() {
                                                 {isMuted[index] ? <VolumeOff /> : <VolumeUp />}
                                             </button>
                                             <img
-                                                src={performer.image_profile ? `http://192.168.254.110:8000/storage/${performer.image_profile}` : profile}
+                                                src={performer.image_profile ? `http://192.168.254.115:8000/storage/${performer.image_profile}` : profile}
                                                 alt={performer.name}
                                                 className="absolute -bottom-6 left-4 w-16 h-16 rounded-full border-4 border-white object-cover transform translate-y-1/2"
                                             />
                                         </div>
                                     ) : (
                                         <img
-                                            src={performer.image_profile ? `http://192.168.254.110:8000/storage/${performer.image_profile}` : profile}
+                                            src={performer.image_profile ? `http://192.168.254.115:8000/storage/${performer.image_profile}` : profile}
                                             alt={performer.name}
                                             className="w-full h-48 object-cover"
                                         />
@@ -352,7 +352,7 @@ export default function Customer() {
                             className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-md"
                         >
                             <img
-                                src={`http://192.168.254.110:8000/storage/${performer.image_profile}`}
+                                src={`http://192.168.254.115:8000/storage/${performer.image_profile}`}
                                 alt={performer.name}
                                 className="w-full h-40 object-cover"
                             />
@@ -430,7 +430,7 @@ export default function Customer() {
                             className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-md"
                         >
                             <img
-                                src={`http://192.168.254.110:8000/storage/${performer.image_profile}`}
+                                src={`http://192.168.254.115:8000/storage/${performer.image_profile}`}
                                 alt={performer.name}
                                 className="w-full h-40 object-cover"
                             />
@@ -503,6 +503,7 @@ export default function Customer() {
             {/* MusicNote Icon for Booking List */}
             <div className="fixed bottom-6 left-6 z-50">
                 <Badge
+                    id="music"
                     badgeContent={selectedPerformers.length}
                     color="primary"
                     onClick={handleMusicNoteModalToggle}
