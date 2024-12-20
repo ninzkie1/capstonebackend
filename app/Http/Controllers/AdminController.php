@@ -140,7 +140,7 @@ class AdminController extends Controller
         try {
             // Get today's date
             $today = now();
-            
+    
             // Initialize arrays for daily data for each metric for the last 30 days
             $totalUsers = [];
             $usersCreatedToday = [];
@@ -148,6 +148,13 @@ class AdminController extends Controller
             $bookingsToday = [];
             $cancelledBookings = [];
             $approvedBookings = [];
+            $sales = 0; // Initialize sales variable
+    
+            // Calculate the total sales from the admin's `talento_coin_balance`
+            $admin = User::where('role', 'admin')->first(); // Assuming the admin has the 'admin' role
+            if ($admin && isset($admin->talento_coin_balance)) {
+                $sales = $admin->talento_coin_balance;
+            }
     
             // Loop through each of the last 30 days
             for ($i = 0; $i < 30; $i++) {
@@ -179,6 +186,7 @@ class AdminController extends Controller
                     'bookings_today' => $bookingsToday,
                     'cancelled_bookings' => $cancelledBookings,
                     'approved_bookings' => $approvedBookings,
+                    'sales' => $sales, // Include sales in the response
                 ]
             ], 200);
         } catch (\Exception $e) {
@@ -187,4 +195,20 @@ class AdminController extends Controller
         }
     }
     
+    // Determine the admin balance
+    public function getAdminBalance()
+    {
+        try {
+            // Assuming there's a 'talento_coin_balance' field in the 'users' table for admins
+            $adminBalance = User::where('role', 'admin')->sum('talento_coin_balance');
+
+            return response()->json([
+                'status' => 'success',
+                'balance' => $adminBalance
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error("Admin Balance Error: " . $e->getMessage());
+            return response()->json(['error' => 'There was an error retrieving the admin balance. Please try again.'], 500);
+        }
+    }
 }

@@ -22,6 +22,7 @@ Broadcast::channel('user.{userId}', function ($user, $userId) {
 Broadcast::channel('admin-notifications', function ($user) {
     return $user->role === 'admin';
 });
+
 Broadcast::channel('performer.{performerId}', function ($user, $performerId) {
     // Example where only the performer or authorized users can listen
     return (int) $user->id === (int) $performerId; // Authentication logic for private channels

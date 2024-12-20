@@ -290,6 +290,7 @@ use Illuminate\Support\Carbon;
                 return response()->json(['error' => 'Failed to decline transaction.'], 500);
             }
         }
+
         
 
     public function getPerformerTransactions()
@@ -320,6 +321,7 @@ use Illuminate\Support\Carbon;
                         'amount' => $transaction->amount,
                         'start_date' => $transaction->booking->start_date ?? null,
                         'status' => $transaction->status,
+                        'decline_message' => $transaction->decline_message ?? null,
                     ];
                 });
     
@@ -406,7 +408,93 @@ use Illuminate\Support\Carbon;
         return response()->json(['error' => 'Failed to fetch performer transactions.'], 500);
     }
 }
+public function cancelBooking($bookingId)
+{
+    try {
+        // Start a database transaction
+        DB::beginTransaction();
 
+        // Validate the booking
+        $booking = Booking::find($bookingId);
+        if (!$booking) {
+            return response()->json(['error' => 'Booking not found.'], 404);
+        }
+
+        // Cancel the booking
+        $booking->status = 'CANCELLED';
+        $booking->save();
+
+        // Process related transactions
+        $transactions = Transaction::where('booking_id', $booking->id)->get();
+
+        foreach ($transactions as $transaction) {
+            if ($transaction->status === 'PENDING') {
+                $transaction->status = 'CANCELLED';
+                $transaction->transaction_type = 'Booking Cancelled';
+                $transaction->save();
+
+                // Refund client and distribute deductions
+                $client = User::find($transaction->user_id);
+                if ($client) {
+                    $deduction = $transaction->amount * 0.10; // 10% deduction
+                    $refundAmount = $transaction->amount - $deduction;
+
+                    // Update client balance
+                    $client->talento_coin_balance += $refundAmount;
+                    $client->save();
+
+                    // Update transaction balance details for the client
+                    $transaction->balance_before = $client->talento_coin_balance - $refundAmount;
+                    $transaction->balance_after = $client->talento_coin_balance;
+                    $transaction->save();
+
+                    // Split the 10% deduction
+                    $adminAmount = $deduction * 0.5; // 5% to admin
+                    $performerAmount = $deduction * 0.5; // 5% to performer
+
+                    // Update admin balance
+                    $admin = User::where('role', 'admin')->first();
+                    if ($admin) {
+                        $admin->talento_coin_balance += $adminAmount;
+                        $admin->save();
+                    } else {
+                        Log::error("Admin user not found.");
+                    }
+
+                    $performerPortfolio = PerformerPortfolio::find($transaction->performer_id);
+                    if (!$performerPortfolio) {
+                        throw new \Exception('Performer portfolio not found.');
+                    }
+        
+                // Now get the actual performer (user) linked to this portfolio
+                $performer = User::find($performerPortfolio->performer_id);
+                if (!$performer) {
+                    throw new \Exception('Performer user not found.');
+                }
+                    if ($performer) {
+                        $performer->talento_coin_balance += $performerAmount;
+                        $performer->save();
+                    } else {
+                        Log::error("Performer not found for transaction ID: {$transaction->id}");
+                    }
+                }
+            }
+        }
+
+        // Update performers associated with this booking
+        BookingPerformer::where('booking_id', $booking->id)
+            ->where('status', 'Pending')
+            ->update(['status' => 'Declined']);
+
+        DB::commit();
+
+        return response()->json(['message' => 'Booking and related transactions cancelled successfully.'], 200);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error("Error cancelling booking: " . $e->getMessage());
+        return response()->json(['error' => 'Failed to cancel booking.'], 500);
+    }
+}
     
     
     }

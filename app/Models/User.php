@@ -28,6 +28,7 @@ class User extends Authenticatable
         'password',
         'role',
         'talento_coin_balance',
+        'location',
     ];
 
     /**

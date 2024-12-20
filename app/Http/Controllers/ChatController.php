@@ -13,6 +13,7 @@ use App\Models\Applications;
 use App\Models\Post;
 use App\Models\User;
 
+
 class ChatController extends Controller
 {
     // Fetch chats between two users
@@ -195,5 +196,81 @@ public function canChatPostClient()
     }
 }
 
+ public function fetchChatNotifications(Request $request)
+    {
+        try {
+            // Get the authenticated user
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['status' => 'error', 'message' => 'User not authenticated.'], 401);
+            }
+
+            // Fetch recent chats where the user is either the sender or the receiver
+            $recentChats = Chat::where('receiver_id', $user->id)
+                ->orWhere('sender_id', $user->id)
+                ->with(['sender', 'receiver']) // Include sender and receiver details
+                ->latest() // Order by the most recent messages
+                ->limit(50) // Adjust the limit as needed
+                ->get();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $recentChats,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch chat notifications.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function deleteNotification($id)
+    {
+        try {
+            // Get the authenticated user
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'User not authenticated.'
+                ], 401);
+            }
+
+            // Find the notification by ID
+            $notification = Chat::find($id);
+
+            if (!$notification) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Notification not found.'
+                ], 404);
+            }
+
+            // Ensure the authenticated user is either the sender or the receiver
+            if ($notification->sender_id !== $user->id && $notification->receiver_id !== $user->id) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'You are not authorized to delete this notification.'
+                ], 403);
+            }
+
+            // Delete the notification
+            $notification->delete();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Notification deleted successfully.'
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error("Error deleting notification: " . $e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to delete notification.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
 }

@@ -19,6 +19,7 @@ use App\Models\BookingPerformer;
 class BookingController extends Controller
 {
     // Store a new booking awdawdw
+    //bookings
     public function store(Request $request)
 {
     // Validate the request
@@ -51,57 +52,48 @@ class BookingController extends Controller
         $conflictingPerformers = [];
 
         foreach ($performers as $performer) {
-            // Check for conflicts with unavailable times
+            // Check for conflicts with unavailable times on the same date within the selected time range
             $timeConflictUnavailable = UnavailableDate::where('performer_id', $performer->id)
                 ->whereDate('unavailable_date', $validatedData['start_date'])
                 ->where(function ($query) use ($validatedData) {
-                    $query->where(function ($q) use ($validatedData) {
-                        $q->where('start_time', '<=', $validatedData['start_time'])
-                          ->where('end_time', '>', $validatedData['start_time']);
-                    })
-                    ->orWhere(function ($q) use ($validatedData) {
-                        $q->where('start_time', '<', $validatedData['end_time'])
-                          ->where('end_time', '>=', $validatedData['end_time']);
-                    })
-                    ->orWhere(function ($q) use ($validatedData) {
-                        $q->where('start_time', '>=', $validatedData['start_time'])
-                          ->where('end_time', '<=', $validatedData['end_time']);
-                    });
+                    $query->whereBetween('start_time', [$validatedData['start_time'], $validatedData['end_time']])
+                        ->orWhereBetween('end_time', [$validatedData['start_time'], $validatedData['end_time']])
+                        ->orWhere(function ($q) use ($validatedData) {
+                            $q->where('start_time', '<=', $validatedData['start_time'])
+                              ->where('end_time', '>=', $validatedData['end_time']);
+                        });
                 })
                 ->exists();
-
+        
             if ($timeConflictUnavailable) {
                 $conflictingPerformers[] = "Performer {$performer->id} ({$performer->user->name}) is unavailable during the selected time on {$validatedData['start_date']}.";
                 continue;
             }
-
+        
             // Check for conflicts with pending bookings on the same date and time range
             $timeConflictPending = BookingPerformer::where('performer_id', $performer->id)
                 ->whereHas('booking', function ($query) use ($validatedData) {
                     $query->whereDate('start_date', $validatedData['start_date'])
                         ->where(function ($q) use ($validatedData) {
-                            $q->where('start_time', '<=', $validatedData['start_time'])
-                              ->where('end_time', '>', $validatedData['start_time']);
-                        })
-                        ->orWhere(function ($q) use ($validatedData) {
-                            $q->where('start_time', '<', $validatedData['end_time'])
-                              ->where('end_time', '>=', $validatedData['end_time']);
-                        })
-                        ->orWhere(function ($q) use ($validatedData) {
-                            $q->where('start_time', '>=', $validatedData['start_time'])
-                              ->where('end_time', '<=', $validatedData['end_time']);
+                            $q->whereBetween('start_time', [$validatedData['start_time'], $validatedData['end_time']])
+                              ->orWhereBetween('end_time', [$validatedData['start_time'], $validatedData['end_time']])
+                              ->orWhere(function ($q) use ($validatedData) {
+                                  $q->where('start_time', '<=', $validatedData['start_time'])
+                                    ->where('end_time', '>=', $validatedData['end_time']);
+                              });
                         })
                         ->where('status', 'PENDING');
                 })
                 ->exists();
-
+        
             if ($timeConflictPending) {
                 $conflictingPerformers[] = "Performer {$performer->id} ({$performer->user->name}) has a pending booking that conflicts with the selected time on {$validatedData['start_date']}.";
                 continue;
             }
-
+        
             $totalCost += $performer->rate; // Sum the performer's rate
         }
+        
 
         // Return errors if there are conflicts
         if (!empty($conflictingPerformers)) {
@@ -727,6 +719,27 @@ public function getDeclinedBookingsForPerformer($performerId)
         return response()->json(['declinedBookings' => $declinedBookings], 200);
     } catch (\Exception $e) {
         return response()->json(['error' => 'Failed to fetch declined bookings', 'message' => $e->getMessage()], 500);
+    }
+}
+
+public function getPendingBookingsForAuthenticatedUser()
+{
+    try {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated. Please login to proceed.'], 401);
+        }
+
+        $pendingBookings = Booking::where('client_id', $user->id)
+            ->where('status', 'PENDING')
+            ->with(['performers.performer'])
+            ->get();
+
+        return response()->json(['status' => 'success', 'data' => $pendingBookings], 200);
+    } catch (\Exception $e) {
+        Log::error("Pending Booking Retrieval Error for User ID {$user->id}: " . $e->getMessage());
+        return response()->json(['error' => 'There was an error retrieving pending bookings. Please try again.'], 500);
     }
 }
 

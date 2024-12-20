@@ -14,6 +14,7 @@ use App\Models\Municipality;
 use App\Models\Theme;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
+use App\Models\Comment;
 
 class CustomerController extends Controller
 {
@@ -203,6 +204,7 @@ class CustomerController extends Controller
                     'experience' => $portfolio->experience,
                     'genres' => $portfolio->genres,
                     'talent_name' => $portfolio->talent_name,
+                    'rate' => $portfolio->rate,
                     'location' => $portfolio->location,
                     'performer_type' => $portfolio->performer_type,
                     'phone' => $portfolio->phone,
@@ -305,6 +307,81 @@ class CustomerController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+    public function getUserPosts()
+{
+    try {
+        // Get the authenticated user
+        $user = Auth::user();
+
+        // Ensure the user is authenticated
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated.'], 401);
+        }
+
+        // Fetch posts owned by the authenticated user
+        $posts = Post::where('user_id', $user->id)
+            ->with(['comments.user']) // Eager load comments and their associated users
+            ->get()
+            ->map(function ($post) {
+                // Format the post data
+                $post->talents = json_decode($post->talents, true); // Decode talents JSON to array
+
+                // Format comments
+                $post->comments = $post->comments->map(function ($comment) {
+                    return [
+                        'id' => $comment->id,
+                        'content' => $comment->content,
+                        'created_at' => $comment->created_at,
+                        'user' => [
+                            'id' => $comment->user->id,
+                            'name' => $comment->user->name,
+                            'image_profile' => $comment->user->image_profile ? asset('storage/' . $comment->user->image_profile) : null,
+                        ],
+                    ];
+                });
+
+                return $post;
+            });
+
+        return response()->json(['posts' => $posts], 200);
+    } catch (\Exception $e) {
+        Log::error("Error fetching user posts: " . $e->getMessage());
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
+    }
+}
+
+public function replyToComment(Request $request, $commentId)
+{
+    try {
+        // Validate the request input
+        $validatedData = $request->validate([
+            'content' => 'required|string',
+        ]);
+
+        // Get the authenticated user
+        $user = Auth::user();
+
+        // Ensure the user is authenticated
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated.'], 401);
+        }
+
+        // Find the comment the user wants to reply to
+        $comment = Comment::findOrFail($commentId);
+
+        // Create a reply to the comment
+        $reply = $comment->replies()->create([
+            'content' => $validatedData['content'],
+            'user_id' => $user->id,
+        ]);
+
+        return response()->json(['message' => 'Reply added successfully', 'reply' => $reply], 201);
+    } catch (\Exception $e) {
+        Log::error("Error replying to comment: " . $e->getMessage());
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
+    }
+}
+
 }
     
     

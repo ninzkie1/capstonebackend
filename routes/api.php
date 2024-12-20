@@ -58,7 +58,10 @@ Route::group(['middleware' => ['auth:sanctum', 'admin']], function () {
     Route::put('/performer-applications/{id}/approve', [PerformerApplicationController::class, 'approve']);
     Route::put('/performer-applications/{id}/reject', [PerformerApplicationController::class, 'reject']);
     Route::get('/admin/summary-report', [AdminController::class, 'getSummaryReport']);
-   
+    Route::get('/sales', [AdminController::class, 'getAdminBalance']);
+
+    /////
+//    Route::delete('/notifications/{id}', [ChatController::class, 'deleteNotification']);
 });
 
 
@@ -125,7 +128,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/portfolio/{portfolioId}', [CustomerController::class, 'getPortfolio']);
     Route::get('/municipalities', [AddressController::class, 'getMunicipalities']);
     Route::get('/municipalities/{id}/barangays', [AddressController::class, 'getBarangaysByMunicipality']);
-
+   
 });
 
 
@@ -183,12 +186,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/complaints', [ComplaintsController::class, 'index']); // Admin fetches all complaints
     Route::put('/complaints/{id}/respond', [ComplaintsController::class, 'respond']); // Admin responds to a complaint
     Route::get('/user/profile', [UserController::class, 'fetchAuthenticatedUserProfile']);
-    //get pending bookings for all authenticated users
-    Route::get('/getPendingBookings', [BookingController::class, 'getPendingBookings']);
-
-
-
     
+    Route::get('/getPendingBookings', [BookingController::class, 'getPendingBookings']);
+    Route::put('/bookings/{bookingId}/cancel', [TransactionController::class,'cancelBooking']);
+    Route::get('/getMyBooking', [BookingController::class, 'getPendingBookingsForAuthenticatedUser']);
+
+    Route::get('/get-notif', [ChatController::class, 'fetchChatNotifications']);
+    Route::delete('/notifications/${id}', [ChatController::class, 'deleteNotification']);
+
 }); 
 Route::get('/chats', [ChatController::class, 'index']);
 Route::post('/chats', [ChatController::class, 'store']);   
