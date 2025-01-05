@@ -31,3 +31,4 @@ Broadcast::channel('bookings', function ($user) {
     return true; // Allowing everyone for simplicity
 });
 
+

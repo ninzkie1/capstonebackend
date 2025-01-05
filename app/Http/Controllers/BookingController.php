@@ -18,149 +18,142 @@ use App\Models\BookingPerformer;
 
 class BookingController extends Controller
 {
-    // Store a new booking awdawdw
-    //bookings
     public function store(Request $request)
-{
-    // Validate the request
-    $validatedData = $request->validate([
-        'performer_ids' => 'required|array', // Multiple performer IDs
-        'performer_ids.*' => 'exists:performer_portfolios,id', // Validate performer IDs
-        'event_name' => 'required|string',
-        'theme_name' => 'required|string',
-        'start_date' => 'required|date',
-        'start_time' => 'required|date_format:H:i',
-        'end_time' => 'required|date_format:H:i|after:start_time',
-        'municipality_name' => 'required|string',
-        'barangay_name' => 'required|string',
-        'notes' => 'nullable|string',
-    ]);
-
-    try {
-        $user = Auth::user();
-
-        // Ensure the user is authenticated
-        if (!$user) {
-            return response()->json(['error' => 'User not authenticated.'], 401);
-        }
-
-        DB::beginTransaction(); // Begin transaction
-
-        // Step 1: Calculate the total cost and check performers' availability
-        $totalCost = 0;
-        $performers = PerformerPortfolio::whereIn('id', $validatedData['performer_ids'])->get();
-        $conflictingPerformers = [];
-
-        foreach ($performers as $performer) {
-            // Check for conflicts with unavailable times on the same date within the selected time range
-            $timeConflictUnavailable = UnavailableDate::where('performer_id', $performer->id)
-                ->whereDate('unavailable_date', $validatedData['start_date'])
-                ->where(function ($query) use ($validatedData) {
-                    $query->whereBetween('start_time', [$validatedData['start_time'], $validatedData['end_time']])
-                        ->orWhereBetween('end_time', [$validatedData['start_time'], $validatedData['end_time']])
-                        ->orWhere(function ($q) use ($validatedData) {
-                            $q->where('start_time', '<=', $validatedData['start_time'])
-                              ->where('end_time', '>=', $validatedData['end_time']);
-                        });
-                })
-                ->exists();
-        
-            if ($timeConflictUnavailable) {
-                $conflictingPerformers[] = "Performer {$performer->id} ({$performer->user->name}) is unavailable during the selected time on {$validatedData['start_date']}.";
-                continue;
-            }
-        
-            // Check for conflicts with pending bookings on the same date and time range
-            $timeConflictPending = BookingPerformer::where('performer_id', $performer->id)
-                ->whereHas('booking', function ($query) use ($validatedData) {
-                    $query->whereDate('start_date', $validatedData['start_date'])
-                        ->where(function ($q) use ($validatedData) {
-                            $q->whereBetween('start_time', [$validatedData['start_time'], $validatedData['end_time']])
-                              ->orWhereBetween('end_time', [$validatedData['start_time'], $validatedData['end_time']])
-                              ->orWhere(function ($q) use ($validatedData) {
-                                  $q->where('start_time', '<=', $validatedData['start_time'])
-                                    ->where('end_time', '>=', $validatedData['end_time']);
-                              });
-                        })
-                        ->where('status', 'PENDING');
-                })
-                ->exists();
-        
-            if ($timeConflictPending) {
-                $conflictingPerformers[] = "Performer {$performer->id} ({$performer->user->name}) has a pending booking that conflicts with the selected time on {$validatedData['start_date']}.";
-                continue;
-            }
-        
-            $totalCost += $performer->rate; // Sum the performer's rate
-        }
-        
-
-        // Return errors if there are conflicts
-        if (!empty($conflictingPerformers)) {
-            return response()->json(['error' => $conflictingPerformers], 409);
-        }
-
-        // Step 2: Validate the client's balance
-        if ($user->talento_coin_balance < $totalCost) {
-            return response()->json(['error' => 'Insufficient balance for this booking.'], 409);
-        }
-
-        // Step 3: Deduct the total cost from the client's balance
-        $user->talento_coin_balance -= $totalCost;
-        $user->save();
-
-        // Step 4: Create the booking
-        $booking = Booking::create([
-            'client_id' => $user->id,
-            'event_name' => $validatedData['event_name'],
-            'theme_name' => $validatedData['theme_name'],
-            'start_date' => $validatedData['start_date'],
-            'start_time' => $validatedData['start_time'],
-            'end_time' => $validatedData['end_time'],
-            'municipality_name' => $validatedData['municipality_name'],
-            'barangay_name' => $validatedData['barangay_name'],
-            'notes' => $validatedData['notes'],
-            'status' => 'PENDING',
+    {
+        // Validate the request
+        $validatedData = $request->validate([
+            'performer_ids' => 'required|array', // Multiple performer IDs
+            'performer_ids.*' => 'exists:performer_portfolios,id', // Validate performer IDs
+            'event_name' => 'required|string',
+            'theme_name' => 'required|string',
+            'start_date' => 'required|date',
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i|after:start_time',
+            'municipality_name' => 'required|string',
+            'barangay_name' => 'required|string',
+            'notes' => 'nullable|string',
         ]);
-
-        // Step 5: Attach performers and create payment transactions
-        $balanceBefore = $user->talento_coin_balance + $totalCost;
-
-        foreach ($performers as $performer) {
-            // Link the performer to the booking
-            BookingPerformer::create([
-                'booking_id' => $booking->id,
-                'performer_id' => $performer->id,
-            ]);
-
-            // Log the transaction for this performer's payment
-            Transaction::create([
-                'user_id' => $user->id,
-                'performer_id' => $performer->id, // Store performer_id here
-                'booking_id' => $booking->id,
-                'transaction_type' => 'Booking Payment',
-                'amount' => $performer->rate,
-                'balance_before' => $balanceBefore,
-                'balance_after' => $balanceBefore - $performer->rate,
+    
+        try {
+            $user = Auth::user();
+    
+            // Ensure the user is authenticated
+            if (!$user) {
+                return response()->json(['error' => 'User not authenticated.'], 401);
+            }
+    
+            DB::beginTransaction(); // Begin transaction
+    
+            // Step 1: Calculate the total cost and check performers' availability
+            $totalCost = 0;
+            $performers = PerformerPortfolio::whereIn('id', $validatedData['performer_ids'])->get();
+            $conflictingPerformers = [];
+    
+            foreach ($performers as $performer) {
+                // Check for conflicts with unavailable times
+                $timeConflictUnavailable = UnavailableDate::where('performer_id', $performer->id)
+                    ->whereDate('unavailable_date', $validatedData['start_date'])
+                    ->where(function ($query) use ($validatedData) {
+                        $query->where(function ($q) use ($validatedData) {
+                            $q->where('start_time', '<', $validatedData['end_time'])
+                              ->where('end_time', '>', $validatedData['start_time']);
+                        });
+                    })
+                    ->exists();
+    
+                if ($timeConflictUnavailable) {
+                    $conflictingPerformers[] = "Performer {$performer->id} ({$performer->user->name}) is unavailable during the selected time on {$validatedData['start_date']}.";
+                    continue;
+                }
+    
+                // Check for conflicts with ACCEPTED bookings
+                $timeConflictBooking = BookingPerformer::where('performer_id', $performer->id)
+                    ->whereHas('booking', function ($query) use ($validatedData) {
+                        $query->whereDate('start_date', $validatedData['start_date'])
+                            ->where(function ($q) use ($validatedData) {
+                                $q->where('start_time', '<', $validatedData['end_time'])
+                                  ->where('end_time', '>', $validatedData['start_time']);
+                            })
+                            ->where('status', 'ACCEPTED'); // Only check for ACCEPTED bookings
+                    })
+                    ->exists();
+    
+                if ($timeConflictBooking) {
+                    $conflictingPerformers[] = "Performer {$performer->id} ({$performer->user->name}) has an ACCEPTED booking that conflicts with the selected time on {$validatedData['start_date']}.";
+                    continue;
+                }
+    
+                $totalCost += $performer->rate;
+            }
+            
+    
+    
+            // Return errors if there are conflicts
+            if (!empty($conflictingPerformers)) {
+                return response()->json(['error' => $conflictingPerformers], 409);
+            }
+    
+            // Step 2: Validate the client's balance
+            if ($user->talento_coin_balance < $totalCost) {
+                return response()->json(['error' => 'Insufficient balance for this booking.'], 409);
+            }
+    
+            // Step 3: Deduct the total cost from the client's balance
+            $user->talento_coin_balance -= $totalCost;
+            $user->save();
+    
+            // Step 4: Create the booking
+            $booking = Booking::create([
+                'client_id' => $user->id,
+                'event_name' => $validatedData['event_name'],
+                'theme_name' => $validatedData['theme_name'],
+                'start_date' => $validatedData['start_date'],
+                'start_time' => $validatedData['start_time'],
+                'end_time' => $validatedData['end_time'],
+                'municipality_name' => $validatedData['municipality_name'],
+                'barangay_name' => $validatedData['barangay_name'],
+                'notes' => $validatedData['notes'],
                 'status' => 'PENDING',
             ]);
-
-            $balanceBefore -= $performer->rate;
+    
+            // Step 5: Attach performers and create payment transactions
+            $balanceBefore = $user->talento_coin_balance + $totalCost;
+    
+            foreach ($performers as $performer) {
+                // Link the performer to the booking
+                BookingPerformer::create([
+                    'booking_id' => $booking->id,
+                    'performer_id' => $performer->id,
+                ]);
+    
+                // Log the transaction for this performer's payment
+                Transaction::create([
+                    'user_id' => $user->id,
+                    'performer_id' => $performer->id, // Store performer_id here
+                    'booking_id' => $booking->id,
+                    'transaction_type' => 'Booking Payment',
+                    'amount' => $performer->rate,
+                    'balance_before' => $balanceBefore,
+                    'balance_after' => $balanceBefore - $performer->rate,
+                    'status' => 'PENDING',
+                ]);
+    
+                $balanceBefore -= $performer->rate;
+            }
+    
+            DB::commit();
+    
+            return response()->json([
+                'message' => 'Booking successfully created.',
+                'booking' => $booking->load('performers.performer'),
+            ], 201);
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Booking Error: " . $e->getMessage());
+            return response()->json(['error' => 'Error creating booking. Please try again.'], 500);
         }
-
-        DB::commit();
-
-        return response()->json([
-            'message' => 'Booking successfully created.',
-            'booking' => $booking->load('performers.performer'),
-        ], 201);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error("Booking Error: " . $e->getMessage());
-        return response()->json(['error' => 'Error creating booking. Please try again.'], 500);
     }
-}
 
 
 
@@ -384,6 +377,17 @@ public function acceptBooking($bookingId)
         } else {
             Log::error("Transaction not found for booking ID $bookingId and performer ID {$performer->id} and client ID {$bookingPerformer->booking->client_id}");
             return response()->json(['error' => 'Transaction not found.'], 404);
+        }
+
+        $remainingPerformers = BookingPerformer::where('booking_id', $bookingId)
+            ->where('status', '!=', 'Accepted')
+            ->count();
+
+        if ($remainingPerformers == 0) {
+            // All performers have declined the booking, so mark it as cancelled
+            $booking = $bookingPerformer->booking;
+            $booking->status = 'ACCEPTED';
+            $booking->save();
         }
 
         // Commit the transaction
@@ -742,5 +746,68 @@ public function getPendingBookingsForAuthenticatedUser()
         return response()->json(['error' => 'There was an error retrieving pending bookings. Please try again.'], 500);
     }
 }
+public function recommendedPerformers()
+{
+    try {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'User not authenticated'], 401);
+        }
 
-} 
+        $lastCompletedBooking = Booking::where('client_id', $user->id)
+            ->where('status', 'COMPLETED')
+            ->latest()
+            ->first();
+
+        if (!$lastCompletedBooking) {
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'last_booking' => null,
+                    'recommended_performers' => []
+                ]
+            ], 200);
+        }
+
+        $recommendedPerformers = User::where('role', 'performer')
+            ->whereHas('performerPortfolio', function ($query) use ($lastCompletedBooking) {
+                $query->where([
+                    ['event_name', $lastCompletedBooking->event_name],
+                    ['theme_name', $lastCompletedBooking->theme_name]
+                ]);
+            })
+            ->with(['performerPortfolio.highlights'])
+            ->get()
+            ->map(function ($performer) {
+                return [
+                    'performer_id' => $performer->id,
+                    'performer_name' => $performer->name,
+                    'performer_highlights' => $performer->performerPortfolio->highlights,
+                    'performer_image' => $performer->image_profile,
+                    'event_name' => $performer->performerPortfolio->event_name,
+                    'theme_name' => $performer->performerPortfolio->theme_name,
+                    'talent_name' => $performer->performerPortfolio->talent_name,
+                    'location' => $performer->performerPortfolio->location,
+                    'rate' => $performer->performerPortfolio->rate,
+                    'average_rating' => $performer->performerPortfolio->average_rating
+                ];
+            });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'last_booking' => [
+                    'event_name' => $lastCompletedBooking->event_name,
+                    'theme_name' => $lastCompletedBooking->theme_name
+                ],
+                'recommended_performers' => $recommendedPerformers
+            ]
+        ], 200);
+
+    } catch (\Exception $e) {
+        Log::error("Error fetching recommended performers: " . $e->getMessage());
+        return response()->json(['error' => 'Failed to fetch recommended performers'], 500);
+    }
+}
+
+}

@@ -18,6 +18,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ComplaintsController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\FeedbackController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PerformerApplicationController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\TCoinController;
@@ -59,8 +60,14 @@ Route::group(['middleware' => ['auth:sanctum', 'admin']], function () {
     Route::put('/performer-applications/{id}/reject', [PerformerApplicationController::class, 'reject']);
     Route::get('/admin/summary-report', [AdminController::class, 'getSummaryReport']);
     Route::get('/sales', [AdminController::class, 'getAdminBalance']);
-
-    /////
+    Route::get('/admin/bookings', [AdminController::class, 'showBookings']);
+    Route::put('/admin/bookings/{id}', [AdminController::class, 'updateBooking']);
+    Route::delete('/admin/bookings/{id}', [AdminController::class, 'deleteBooking']);
+    Route::get('/admin/booking-details', [AdminController::class, 'getBookingDetails']);
+    Route::get('/admin/today-bookings', [AdminController::class, 'getTodayBookings']);
+    Route::get('/admin/cancelled-bookings', [AdminController::class, 'getCancelledBookings']);
+    Route::get('/admin/approved-bookings', [AdminController::class, 'getApprovedBookings']);
+    Route::get('/admin/transaction-details', [AdminController::class, 'getTransactionDetails']);
 //    Route::delete('/notifications/{id}', [ChatController::class, 'deleteNotification']);
 });
 
@@ -167,6 +174,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/transactions', [TransactionController::class, 'store']); // Create a new transaction
     Route::put('/transactions/{id}/approve', [TransactionController::class, 'approveTransaction']);//approve the transaction if the user already satisfied and the performer fullfill the clients booking to release the TalentoCoin
     Route::put('/transactions/{id}/decline', [TransactionController::class, 'declineTransaction']);
+    Route::put('/bulktransactions/approve', [TransactionController::class, 'bulkapproveTransaction']);
+    Route::put('/bulktransactions/decline', [TransactionController::class, 'bulkdeclineTransaction']);
+
+    Route::put('/transactions/{id}/decline', [TransactionController::class, 'declineTransaction']);
     Route::post('/update-profile', [CustomerController::class, 'updateProfile']);
     Route::get('/client-info', [CustomerController::class, 'getLoggedInClient']);
     Route::post('/profile', [CustomerController::class, 'showProfile']); 
@@ -174,7 +185,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/performers/{performerId}/accepted-bookings', [BookingController::class, 'getAcceptedBookingsForPerformer']);
     Route::get('/performers/{performerId}/declined-bookings', [BookingController::class, 'getDeclinedBookingsForPerformer']);
     Route::get('/can-chat/{clientId}', [ChatController::class, 'canChat']);
-    Route::get('/canChatClients', [ChatController::class, 'getClientsWithAcceptedBookings']);
+    // Route::get('/canChatClients', [ChatController::class, 'getClientsWithAcceptedBookings']);
+     Route::get('/canChatClients', [ChatController::class, 'canChatClients']);
     Route::get('/canChatPerformer', [ChatController::class, 'canChatPerformer']);
     Route::get('/getAdmin', [UserController::class, 'getAdmin']);
     Route::get('/performers/{performerId}/performerPendingDates', [UnavailableDateController::class, 'getPendingBookingDates']);
@@ -190,9 +202,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/getPendingBookings', [BookingController::class, 'getPendingBookings']);
     Route::put('/bookings/{bookingId}/cancel', [TransactionController::class,'cancelBooking']);
     Route::get('/getMyBooking', [BookingController::class, 'getPendingBookingsForAuthenticatedUser']);
-
+    Route::get('/recommended', [BookingController::class, 'recommendedPerformers']);
     Route::get('/get-notif', [ChatController::class, 'fetchChatNotifications']);
-    Route::delete('/notifications/${id}', [ChatController::class, 'deleteNotification']);
+    Route::delete('/noty/{id}', [NotificationController::class, 'deleteNotifications']);
+    Route::post('/chats/seen', [ChatController::class, 'markAsSeen']);
+    
+
 
 }); 
 Route::get('/chats', [ChatController::class, 'index']);

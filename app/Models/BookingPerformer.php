@@ -23,6 +23,6 @@ class BookingPerformer extends Model
 
     public function performer()
     {
-        return $this->belongsTo(PerformerPortfolio::class, 'performer_id');
+        return $this->belongsTo(PerformerPortfolio::class, 'performer_id', 'id');
     }
 }

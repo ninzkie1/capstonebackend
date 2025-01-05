@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['http://localhost:5173','http://localhost:8000','http://192.168.1.21:8000','http:// 192.168.254.107:5173','http://192.168.208.120:5173','http://192.168.208.120:8000', 'http://192.168.254.115:8000', 'http://192.168.254.115:5173','https://talentobooking.netlify.app','https://palegoldenrod-weasel-648342.hostingersite.com'], // Add your frontend URL here
+    'allowed_origins' => ['http://localhost:5173','http://localhost:8000','http://192.168.1.21:8000','http:// 192.168.254.107:5173','http://192.168.208.120:5173','http://192.168.208.120:8000', 'http://192.168.254.115:8000', 'http://192.168.254.115:5173','https://talentobooking.netlify.app','https://palegoldenrod-weasel-648342.hostingersite.com','http://192.168.254.109:8000','http://192.168.254.109:5173','http://192.168.254.109:8000',], // Add your frontend URL here
 
     'allowed_origins_patterns' => [],
 
