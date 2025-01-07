@@ -357,4 +357,32 @@ public function canChatPostClient()
             return response()->json(['error' => 'Failed to mark message as seen'], 500);
         }
     }
+    public function getUnreadCount()
+{
+    try {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'User not authenticated.'], 401);
+        }
+
+        $unreadCount = Chat::where('receiver_id', $user->id)
+            ->where(function($query) use ($user) {
+                $query->whereNull('seen_by')
+                    ->orWhereRaw('NOT JSON_CONTAINS(seen_by, ?)', [$user->id]);
+            })
+            ->count();
+
+        return response()->json([
+            'status' => 'success',
+            'count' => $unreadCount
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to fetch unread count.',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }

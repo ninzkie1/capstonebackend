@@ -15,6 +15,7 @@ use App\Models\Transaction;
 //listener to realtime pusher 
 use App\Events\BookingUpdated;
 use App\Models\BookingPerformer;
+use App\Models\BookingNotification;
 
 class BookingController extends Controller
 {
@@ -125,7 +126,8 @@ class BookingController extends Controller
                     'booking_id' => $booking->id,
                     'performer_id' => $performer->id,
                 ]);
-    
+                
+                
                 // Log the transaction for this performer's payment
                 Transaction::create([
                     'user_id' => $user->id,
@@ -286,7 +288,14 @@ class BookingController extends Controller
             $booking->status = 'DECLINED';
             $booking->save();
         }
-
+         // Create booking notification
+        BookingNotification::create([
+            'user_id' => $bookingPerformer->booking->client_id,
+            'booking_id' => $bookingId,
+            'type' => 'booking_accepted',
+            'message' => "Your booking for {$bookingPerformer->booking->event_name} has been rejected by {$authUser->name} the amount has been refunded",
+            'is_read' => false
+        ]);
         DB::commit();
 
         event(new BookingUpdated($bookingPerformer->booking));
@@ -346,6 +355,7 @@ public function acceptBooking($bookingId)
             ->where('user_id', $bookingPerformer->booking->client_id) // user_id should refer to client_id
             ->where('performer_id', $performer->id)
             ->first();
+            
 
         if ($transaction) {
             // Update the transaction to indicate the booking has been accepted by this performer
@@ -359,6 +369,7 @@ public function acceptBooking($bookingId)
             if (!$performerUser) {
                 throw new \Exception('Performer user not found.');
             }
+            
 
             $balanceBefore = $performerUser->talento_coin_balance;
             $amount = $transaction->amount;
@@ -390,6 +401,15 @@ public function acceptBooking($bookingId)
             $booking->save();
         }
 
+        // Create booking notification
+        BookingNotification::create([
+            'user_id' => $bookingPerformer->booking->client_id,
+            'booking_id' => $bookingId,
+            'type' => 'booking_accepted',
+            'message' => "Your booking for {$bookingPerformer->booking->event_name} has been accepted by {$authUser->name} please check you dashboard My Booking",
+            'is_read' => false
+        ]);
+
         // Commit the transaction
         DB::commit();
 
@@ -399,6 +419,10 @@ public function acceptBooking($bookingId)
         return response()->json([
             'message' => 'Booking accepted successfully.',
             'booking' => $bookingPerformer,
+            'notification' => [
+                'type' => 'booking_accepted',
+                'message' => "Booking accepted successfully by {$authUser->name}"
+            ]
         ], 200);
 
     } catch (\Exception $e) {
@@ -408,7 +432,6 @@ public function acceptBooking($bookingId)
         return response()->json(['error' => 'There was an error accepting the booking. Please try again.'], 500);
     }
 }
-
 
     
     

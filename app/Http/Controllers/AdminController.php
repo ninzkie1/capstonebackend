@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use App\Models\Transaction;
 use App\Models\BookingPerformer;
+use App\Models\Talent;
 use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
@@ -140,20 +141,20 @@ class AdminController extends Controller
         return response()->json(['message' => 'User deleted successfully']);
     }
 
-    public function getSummaryReport()
+      public function getSummaryReport()
 {
     try {
         // Basic summary stats
-        $totalBookings = Booking::count();
+        $totalBookings = Booking::whereIn('status', ['COMPLETED', 'CANCELLED'])->count();
         $bookingsToday = Booking::whereDate('created_at', Carbon::today())->count();
         $cancelledBookings = Booking::where('status', 'CANCELLED')->count();
         $approvedBookings = Booking::where('status', 'COMPLETED')->count();
-        $sales = Transaction::sum('amount');
+        $sales = Transaction::where('status', 'APPROVED')->sum('amount');
 
         // Weekly statistics for the current week
         $weeklyStats = Booking::select(
             DB::raw('WEEK(created_at) as week'),
-            DB::raw('COUNT(*) as total_bookings'),
+            DB::raw('COUNT(CASE WHEN status IN ("CANCELLED", "COMPLETED") THEN 1 END) as total_bookings'),
             DB::raw('COUNT(CASE WHEN status = "CANCELLED" THEN 1 END) as cancelled_bookings'),
             DB::raw('COUNT(CASE WHEN status = "COMPLETED" THEN 1 END) as accepted_bookings')
         )
@@ -165,7 +166,7 @@ class AdminController extends Controller
         // Yearly statistics
         $yearlyStats = Booking::select(
             DB::raw('YEAR(created_at) as year'),
-            DB::raw('COUNT(*) as total_bookings'),
+            DB::raw('COUNT(CASE WHEN status IN ("CANCELLED", "COMPLETED") THEN 1 END) as total_bookings'),
             DB::raw('COUNT(CASE WHEN status = "CANCELLED" THEN 1 END) as cancelled_bookings'),
             DB::raw('COUNT(CASE WHEN status = "COMPLETED" THEN 1 END) as accepted_bookings')
         )
@@ -207,22 +208,26 @@ class AdminController extends Controller
             ->orderBy('week')
             ->get();
 
-        $talentStatsWeekly = $talentBookingsWeekly->groupBy('talent_name')
+         $talentStatsWeekly = $talentBookingsWeekly->groupBy(function($item) {
+            // Split talent_name by comma and trim whitespace
+            $talents = array_map('trim', explode(',', $item->talent_name));
+            return $talents;
+            })
             ->map(function($bookings) {
-                return [
-                    'weekly_bookings' => $bookings->mapWithKeys(function($booking) {
-                        return [$booking->week => $booking->total_bookings];
-                    }),
-                    'total_bookings' => $bookings->sum('total_bookings')
-                ];
+            return [
+                'weekly_bookings' => $bookings->mapWithKeys(function($booking) {
+                return [$booking->week => $booking->total_bookings];
+                }),
+                'total_bookings' => $bookings->sum('total_bookings')
+            ];
             });
 
         // Monthly statistics
         $monthlyStats = Booking::select(
             DB::raw('MONTH(created_at) as month'),
-            DB::raw('COUNT(*) as total_bookings'),
+            DB::raw('COUNT(CASE WHEN status IN ("CANCELLED", "COMPLETED") THEN 1 END) as total_bookings'),
             DB::raw('COUNT(CASE WHEN status = "CANCELLED" THEN 1 END) as cancelled_bookings'),
-            DB::raw('COUNT(CASE WHEN status = "ACCEPTED" THEN 1 END) as accepted_bookings')
+            DB::raw('COUNT(CASE WHEN status = "COMPLETED" THEN 1 END) as completed_bookings')
         )
         ->whereYear('created_at', Carbon::now()->year)
         ->groupBy('month')
@@ -233,7 +238,7 @@ class AdminController extends Controller
                 'month' => Carbon::create()->month($stat->month)->format('F'),
                 'total_bookings' => $stat->total_bookings,
                 'cancelled_bookings' => $stat->cancelled_bookings,
-                'accepted_bookings' => $stat->accepted_bookings
+                'completed_bookings' => $stat->completed_bookings
             ];
         });
 
@@ -254,28 +259,31 @@ class AdminController extends Controller
             ];
         });
 
-        // Talent bookings by month
+         // Talent bookings by month
         $talentBookingsMonthly = BookingPerformer::join('performer_portfolios', 'booking_performer.performer_id', '=', 'performer_portfolios.performer_id')
             ->join('bookings', 'booking_performer.booking_id', '=', 'bookings.id')
             ->select(
-                'performer_portfolios.talent_name',
-                DB::raw('MONTH(bookings.created_at) as month'),
-                DB::raw('COUNT(*) as total_bookings')
+            'performer_portfolios.talent_name',
+            DB::raw('MONTH(bookings.created_at) as month'),
+            DB::raw('COUNT(*) as total_bookings'),
+            'bookings.status'
             )
             ->whereYear('bookings.created_at', Carbon::now()->year)
-            ->groupBy('talent_name', 'month')
+            ->whereIn('bookings.status', ['CANCELLED', 'COMPLETED'])
+            ->groupBy('talent_name', 'month', 'status')
             ->orderBy('month')
             ->get();
 
         $talentStatsMonthly = $talentBookingsMonthly->groupBy('talent_name')
             ->map(function($bookings) {
-                return [
-                    'monthly_bookings' => $bookings->mapWithKeys(function($booking) {
-                        return [Carbon::create()->month($booking->month)->format('F') => $booking->total_bookings];
-                    }),
-                    'total_bookings' => $bookings->sum('total_bookings')
-                ];
+            return [
+                'monthly_bookings' => $bookings->mapWithKeys(function($booking) {
+                return [Carbon::create()->month($booking->month)->format('F') => $booking->total_bookings];
+                }),
+                'total_bookings' => $bookings->sum('total_bookings')
+            ];
             });
+
 
         return response()->json([
             'status' => 'success',
@@ -305,6 +313,8 @@ class AdminController extends Controller
         ], 500);
     }
 }
+
+
 
     
     // Determine the admin balance
@@ -620,4 +630,70 @@ class AdminController extends Controller
             return response()->json(['error' => 'Failed to fetch transaction details'], 500);
         }
     }
+   
+    
+    public function getBookingsByTalentDetails()
+    {
+        try {
+            $bookings = Booking::with([
+                'client',
+                'bookingPerformers.performer.user',
+                'bookingPerformers.performer.talents',
+                'transactions'
+            ])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($booking) {
+                $transactions = Transaction::where('booking_id', $booking->id)
+                    ->where(function($query) {
+                        $query->where('transaction_type', 'Waiting For Approval')
+                              ->orWhere('transaction_type', 'Booking Cancelled');
+                    })
+                    ->get();
+    
+                return [
+                    'id' => $booking->id,
+                    'event_name' => $booking->event_name,
+                    'theme_name' => $booking->theme_name,
+                    'client_name' => $booking->client->name,
+                    'status' => $booking->status,
+                    'total_amount' => $transactions->sum('amount'),
+                    'event_date' => $booking->start_date,
+                    'event_time' => [
+                        'start' => $booking->start_time,
+                        'end' => $booking->end_time
+                    ],
+                    'location' => [
+                        'municipality' => $booking->municipality_name,
+                        'barangay' => $booking->barangay_name
+                    ],
+                    'performers' => $booking->bookingPerformers->map(function ($bp) {
+                        return [
+                            'name' => $bp->performer->user->name,
+                            'talents' => $bp->performer->talents->pluck('talent_name'),
+                        'rate' => $bp->performer->rate,
+                        'duration' => Carbon::parse($bp->booking->end_time)->diffForHumans(Carbon::parse($bp->booking->start_time), true) 
+                        ];
+                    }),
+                    'created_at' => $booking->created_at->format('Y-m-d H:i:s'),
+                    'updated_at' => $booking->updated_at->format('Y-m-d H:i:s')
+                ];
+            });
+    
+            return response()->json([
+                'status' => 'success',
+                'data' => $bookings
+            ]);
+    
+        } catch (\Exception $e) {
+            Log::error("Error fetching booking details by talent: " . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch booking details by talent',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+   
+  
 }

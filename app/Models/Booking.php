@@ -51,6 +51,10 @@ public function bookingPerformers()
 {
     return $this->hasMany(BookingPerformer::class, 'booking_id');
 }
+public function event_details()
+{
+    return $this->hasOne(Event::class);
+}
 
 
     

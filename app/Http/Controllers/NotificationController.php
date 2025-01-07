@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\BookingNotification;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Notification;
 use App\Models\Chat;
@@ -95,4 +96,29 @@ class NotificationController extends Controller
         }
     }
     
+    public function getBookingNotifications()
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401);
+            }
+
+            $notifications = BookingNotification::where('user_id', $user->id)
+                ->with(['booking'])
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $notifications
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch notifications',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

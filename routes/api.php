@@ -68,6 +68,7 @@ Route::group(['middleware' => ['auth:sanctum', 'admin']], function () {
     Route::get('/admin/cancelled-bookings', [AdminController::class, 'getCancelledBookings']);
     Route::get('/admin/approved-bookings', [AdminController::class, 'getApprovedBookings']);
     Route::get('/admin/transaction-details', [AdminController::class, 'getTransactionDetails']);
+    Route::get('/admin/talent-bookings', [AdminController::class, 'getBookingsByTalentDetails']);
 //    Route::delete('/notifications/{id}', [ChatController::class, 'deleteNotification']);
 });
 
@@ -180,6 +181,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/transactions/{id}/decline', [TransactionController::class, 'declineTransaction']);
     Route::post('/update-profile', [CustomerController::class, 'updateProfile']);
     Route::get('/client-info', [CustomerController::class, 'getLoggedInClient']);
+    Route::get('/getMyPost', [CustomerController::class, 'getUserPosts']);
     Route::post('/profile', [CustomerController::class, 'showProfile']); 
     // Route::get('/accepted-client', [BookingController::class, 'getAcceptedBookings']);
     Route::get('/performers/{performerId}/accepted-bookings', [BookingController::class, 'getAcceptedBookingsForPerformer']);
@@ -206,7 +208,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/get-notif', [ChatController::class, 'fetchChatNotifications']);
     Route::delete('/noty/{id}', [NotificationController::class, 'deleteNotifications']);
     Route::post('/chats/seen', [ChatController::class, 'markAsSeen']);
-    
+     Route::get('/get-booking-notifications', [NotificationController::class, 'getBookingNotifications']);
 
 
 }); 

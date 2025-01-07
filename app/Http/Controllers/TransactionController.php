@@ -217,96 +217,118 @@ use Illuminate\Support\Carbon;
                 return response()->json(['error' => 'Failed to approve transaction.'], 500);
             }
         }
-        public function bulkapproveTransaction(Request $request)
+        public function bulkApproveTransaction(Request $request)
         {
-            $transactionIds = $request->input('transactionIds');
-        
-            if (empty($transactionIds) || !is_array($transactionIds)) {
-                return response()->json(['error' => 'No transaction IDs provided.'], 400);
-            }
-        
-            // Filter valid transactions
-            $transactions = Transaction::whereIn('id', $transactionIds)
-                ->where('status', 'PENDING')
-                ->where('transaction_type', 'Waiting for Approval')
-                ->get();
-        
-            if ($transactions->isEmpty()) {
-                return response()->json(['error' => 'No valid transactions found.'], 404);
-            }
-        
-            $errors = [];
-            DB::beginTransaction();
-        
             try {
-                foreach ($transactions as $transaction) {
+                $transactionIds = $request->input('transactionIds', []);
+                $warnings = [];
+                $successCount = 0;
+        
+                foreach ($transactionIds as $transactionId) {
+                    DB::beginTransaction();
                     try {
-                        // Validate booking exists
-                        $booking = Booking::find($transaction->booking_id);
-                        if (!$booking) {
-                            throw new \Exception("Booking not found for transaction ID {$transaction->id}");
+                        $transaction = Transaction::find($transactionId);
+        
+                        if (!$transaction) {
+                            $warnings[] = "Transaction ID {$transactionId} not found.";
+                            continue;
                         }
         
-                        // Check if the current date matches the booking start date
-                        $currentDate = now(); // Current date and time
+                        // Find performer through portfolio
+                        $performerPortfolio = PerformerPortfolio::find($transaction->performer_id);
+                        if (!$performerPortfolio) {
+                            throw new \Exception("Performer portfolio not found for transaction {$transactionId}");
+                        }
+        
+                        // Get actual performer user
+                        $performer = User::find($performerPortfolio->performer_id);
+                        if (!$performer) {
+                            throw new \Exception("Performer user not found for transaction {$transactionId}");
+                        }
+        
+                        // Date validation
+                        $booking = Booking::find($transaction->booking_id);
+                        if (!$booking) {
+                            throw new \Exception("Booking not found for transaction {$transactionId}");
+                        }
+        
+                        $currentDate = now();
                         $bookingStartDate = Carbon::parse($booking->start_date);
         
                         if (!$bookingStartDate->isSameDay($currentDate)) {
-                            throw new \Exception("Approval for Booking ID {$booking->id} can only be made on the start date. Booking Date: {$booking->start_date}");
+                            $warnings[] = "Transaction {$transactionId} can only be approved on the start date.";
+                            continue;
                         }
         
-                        // Update performer's balance
-                        $performer = User::find($transaction->performer_id);
-                        if (!$performer) {
-                            throw new \Exception("Performer not found for transaction ID {$transaction->id}");
-                        }
+                        // Only process if waiting for approval and pending
+                        if ($transaction->transaction_type === 'Waiting for Approval' && $transaction->status === 'PENDING') {
+                            $currentBalance = $performer->talento_coin_balance;
+                            $newBalance = $currentBalance + $transaction->amount;
         
-                        $balanceBefore = $performer->talento_coin_balance;
-                        $performer->talento_coin_balance += $transaction->amount;
-                        $performer->save();
+                            // Update performer balance
+                            $performer->talento_coin_balance = $newBalance;
+                            $performer->save();
         
-                        // Update transaction details
-                        $transaction->balance_before = $balanceBefore;
-                        $transaction->balance_after = $performer->talento_coin_balance;
-                        $transaction->status = 'APPROVED';
-                        $transaction->save();
+                            // Update original transaction
+                            $transaction->update([
+                                'status' => 'COMPLETED',
+                                'transaction_type' => 'Payment Received',
+                                'balance_before' => $currentBalance,
+                                'balance_after' => $newBalance
+                            ]);
         
-                        // Update booking performer status
-                        BookingPerformer::where('booking_id', $booking->id)
-                            ->where('performer_id', $transaction->performer_id)
-                            ->update(['status' => 'Accepted']);
-        
-                        // Check if booking is complete
-                        $pendingCount = BookingPerformer::where('booking_id', $booking->id)
-                            ->where('status', 'Pending')
-                            ->count();
-        
-                        if ($pendingCount == 0) {
-                            $booking->status = 'COMPLETED';
-                            $booking->save();
+                            // Create completion record
+                            Transaction::create([
+                                'user_id' => $transaction->user_id,
+                                'performer_id' => $transaction->performer_id,
+                                'booking_id' => $transaction->booking_id,
+                                'transaction_type' => 'Payment Completed',
+                                'amount' => $transaction->amount,
+                                'balance_before' => $currentBalance,
+                                'balance_after' => $newBalance,
+                                'status' => 'COMPLETED'
+                            ]);
+                            // Update booking performer status
+                                BookingPerformer::where('booking_id', $booking->id)
+                                    ->where('performer_id', $transaction->performer_id)
+                                    ->update(['status' => 'Accepted']);
+                
+                                // Check if booking is complete
+                                $pendingCount = BookingPerformer::where('booking_id', $booking->id)
+                                    ->where('status', 'Pending')
+                                    ->count();
+                
+                                if ($pendingCount == 0) {
+                                    $booking->status = 'COMPLETED';
+                                    $booking->save();
+                                }
+                            DB::commit();
+                            $successCount++;
+                        } else {
+                            $warnings[] = "Transaction {$transactionId} is not eligible for approval.";
                         }
         
                     } catch (\Exception $e) {
-                        // Log individual transaction error and continue with the next one
-                        $errors[] = "Transaction ID {$transaction->id}: " . $e->getMessage();
+                        DB::rollBack();
+                        $warnings[] = "Error processing transaction {$transactionId}: {$e->getMessage()}";
                     }
                 }
         
-                DB::commit();
-        
                 return response()->json([
-                    'message' => 'Transactions processed with some errors.',
-                    'warnings' => $errors,
-                ], 200);
+                    'status' => 'success',
+                    'message' => "{$successCount} transactions approved successfully",
+                    'warnings' => $warnings
+                ]);
         
             } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error("Bulk approval error: " . $e->getMessage());
-                return response()->json(['error' => 'Failed to approve transactions'], 500);
+                Log::error("Bulk Transaction Error: " . $e->getMessage());
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Error processing bulk approval',
+                    'error' => $e->getMessage()
+                ], 500);
             }
         }
-        
-        
         public function bulkdeclineTransaction(Request $request)
         {
             $transactionIds = $request->input('transactionIds');

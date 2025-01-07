@@ -200,6 +200,8 @@ class CustomerController extends Controller
                 'portfolio' => [
                     'portfolio_id' => $portfolio->id, // Return the portfolio's primary key as `portfolio_id`
                     'performer_id' => $portfolio->performer_id, // Include the `performer_id` for reference
+                    'theme_name' => $portfolio->theme_name,
+                    'event_name' => $portfolio->event_name,
                     'description' => $portfolio->description,
                     'experience' => $portfolio->experience,
                     'genres' => $portfolio->genres,
