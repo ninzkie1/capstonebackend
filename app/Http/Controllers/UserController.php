@@ -1,5 +1,5 @@
 <?php
-
+// app/Http/Controllers/UserController.php
 
 namespace App\Http\Controllers;
 
@@ -28,7 +28,7 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
             'role' => 'required|string|max:255',
-            'image_profile' => 'required|image|mimes:jpg,jpeg,png|max:6048',
+            'image_profile' => 'required|image|mimes:jpg,jpeg,png|max:10048',
         ]);
 
         $user = new User();
@@ -67,7 +67,7 @@ class UserController extends Controller
     $request->validate([
         'name' => 'string|max:255',
         'lastname' => 'string|max:255',
-        'image_profile' => 'nullable|image|mimes:jpg,jpeg,png|max:2048', // Adjust size if needed
+        'image_profile' => 'nullable|image|mimes:jpg,jpeg,png|max:6048', // Adjust size if needed
     ]);
 
     // Update the name and lastname

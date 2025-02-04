@@ -145,7 +145,7 @@ class AdminWalletController extends Controller
                         'account_name' => $wallet->account_name,
                         'account_number' => $wallet->account_number,
                         // Corrected reference to qr_code_path and generating a proper public URL
-                        'qr_code_url' => $wallet->qr_code_path ? asset('storage/' . $wallet->qr_code_path) : null,
+                        'qr_code_url' => $wallet->qr_code_path ? asset('/backend/talentoproject_backend/public/storage/' . $wallet->qr_code_path) : null,
                     ],
                 ], 200);
             } else {

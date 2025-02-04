@@ -75,22 +75,26 @@ class FeedbackController extends Controller
 
     // Get ratings for a specific performer
     public function getRatings($performerId)
-    {
-        $performer = PerformerPortfolio::find($performerId);
-     
-        if (!$performer) {
-            return response()->json(['message' => 'Performer not found'], 404);
-        }
-     
-        $performer = PerformerPortfolio::with('feedback.user')->findOrFail($performerId);
-        $averageRating = $performer->feedback->avg('rating');
+{
+    // Retrieve the performer along with feedback and user details in one query
+    $performer = PerformerPortfolio::with('feedback.user')->find($performerId);
 
-        return response()->json([
-            'performer' => $performer,
-            'average_rating' => $averageRating,
-            'feedback' => $performer->feedback,
-        ]);
+    // If performer not found, return an appropriate error message
+    if (!$performer) {
+        return response()->json(['message' => 'Performer not found'], 404);
     }
+
+    // Calculate the average rating
+    $averageRating = $performer->feedback->avg('rating');
+
+    // Return the performer data, average rating, and feedback
+    return response()->json([
+        'performer' => $performer,
+        'average_rating' => $averageRating,
+        'feedback' => $performer->feedback,
+    ]);
+}
+
     public function canLeaveReview($performerId)
     {
         try {

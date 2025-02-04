@@ -50,17 +50,17 @@ class ApplicationsController extends Controller
         ->get()
         ->map(function ($application) {
             return [
-            'performer_id' => $application->performer->id, // Adding performer_id
-            'performer_name' => $application->performer->user->name, // Assuming performer has a 'name' field
-            'posts_event' => $application->post->event_name,
-            'posts_theme' => $application->post->theme_name,
-            'performer_talent' => $application->performer->talent_name,
-            'requested_on' => $application->created_at, // Date the request was created
-            'status' => $application->status,
-            'id' => $application->id, // For actions like delete or update
+                'performer_id' => $application->performer->id,
+                'performer_name' => $application->performer->user->name, // Assuming performer has a 'name' field
+                'posts_event' => $application->post->event_name,
+                'posts_theme' => $application->post->theme_name,
+                'performer_talent' => $application->performer->talent_name,
+                'requested_on' => $application->created_at, // Date the request was created
+                'status' => $application->status,
+                'id' => $application->id, // For actions like delete or update
             ];
         });
-           
+
     return response()->json($applications);
 }
 public function approve(Request $request, $applicationId)

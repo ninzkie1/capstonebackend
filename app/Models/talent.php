@@ -11,8 +11,11 @@ class Talent extends Model
     protected $table = 'talent'; 
     protected $fillable = ['talent_name', 'performer_id'];
 
+  
     public function performerPortfolio()
     {
         return $this->belongsTo(PerformerPortfolio::class, 'performer_id');
     }
+   
+
 }

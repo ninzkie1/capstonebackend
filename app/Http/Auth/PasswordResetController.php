@@ -4,16 +4,17 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\User;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\CustomResetPasswordNotification;
+
 
 class PasswordResetController extends Controller
 {
@@ -77,33 +78,42 @@ class PasswordResetController extends Controller
 
         return response()->json(['message' => 'Invalid or expired token. Please request a new reset link.'], 400);
     }
-    public function resetEmail(Request $request)
-    {
-        // Validate input
-        $validator = Validator::make($request->all(), [
-            'new_email' => 'required|email|unique:users,email',
-            'password' => 'required',
-        ]);
+   public function resetEmail(Request $request)
+{
+    $request->validate([
+        'new_email' => 'required|email|unique:users,email',
+        'password' => 'required',
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+    // Step 1: Get the authenticated user
+    $user = Auth::user();
 
-        $user = Auth::user();
-
-        // Verify the user's password
-        if (!password_verify($request->password, $user->password)) {
-            return response()->json(['error' => 'Incorrect password.'], 401);
-        }
-
-        try {
-            // Update the email address
-            $user->email = $request->new_email;
-            $user->save();
-
-            return response()->json(['message' => 'Email updated successfully.']);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to update email.'], 500);
-        }
+    // Step 2: Validate the password
+    if (!Hash::check($request->password, $user->password)) {
+        return response()->json(['message' => 'Invalid credentials.'], 401);
     }
+
+    // Step 3: Update the user's email
+    $user->email = $request->new_email;
+    $user->save();
+
+    return response()->json(['message' => 'Email successfully updated.']);
+}
+
+    public function verifyPassword(Request $request)
+{
+    $request->validate([
+        'password' => 'required',
+    ]);
+
+    $user = Auth::user();
+
+    // Verify the password against the hashed password
+    if (!Hash::check($request->password, $user->password)) {
+        return response()->json(['error' => 'Incorrect password.'], 401);
+    }
+
+    return response()->json(['message' => 'Password verified.'], 200);
+}
+
 }

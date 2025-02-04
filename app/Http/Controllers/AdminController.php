@@ -149,7 +149,9 @@ class AdminController extends Controller
         $bookingsToday = Booking::whereDate('created_at', Carbon::today())->count();
         $cancelledBookings = Booking::where('status', 'CANCELLED')->count();
         $approvedBookings = Booking::where('status', 'COMPLETED')->count();
-        $sales = Transaction::where('status', 'APPROVED')->sum('amount');
+       $sales = Transaction::where('status', 'COMPLETED')
+        ->where('transaction_type', 'Payment Completed')
+        ->sum('amount');
 
         // Weekly statistics for the current week
         $weeklyStats = Booking::select(
@@ -180,7 +182,8 @@ class AdminController extends Controller
             DB::raw('SUM(amount) as total_revenue')
         )
         ->whereYear('created_at', Carbon::now()->year)
-        ->where('status', 'APPROVED')
+        ->where('status', 'COMPLETED')
+        ->where('transaction_type', 'Payment Completed')
         ->groupBy('week')
         ->orderBy('week')
         ->get();
@@ -190,7 +193,8 @@ class AdminController extends Controller
             DB::raw('YEAR(created_at) as year'),
             DB::raw('SUM(amount) as total_revenue')
         )
-        ->where('status', 'APPROVED')
+      ->where('status', 'COMPLETED')
+        ->where('transaction_type', 'Payment Completed')
         ->groupBy('year')
         ->orderBy('year')
         ->get();
@@ -248,7 +252,8 @@ class AdminController extends Controller
             DB::raw('SUM(amount) as total_revenue')
         )
         ->whereYear('created_at', Carbon::now()->year)
-        ->where('status', 'APPROVED')
+        ->where('status', 'COMPLETED')
+        ->where('transaction_type', 'Payment Completed')
         ->groupBy('month')
         ->orderBy('month')
         ->get()
@@ -445,45 +450,37 @@ class AdminController extends Controller
         }
     }
 
-    public function getBookingDetails()
+   public function getBookingDetails()
 {
     try {
         $bookings = Booking::with(['client', 'bookingPerformers.performer.user'])
+            ->whereIn('status', ['CANCELLED', 'COMPLETED'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($booking) {
-                // Get pending transactions
-                $pendingTransactions = Transaction::where('booking_id', $booking->id)
-                    ->where('transaction_type', 'Waiting For Approval')
+                // Get transactions based on booking status
+                $transactions = Transaction::where('booking_id', $booking->id)
+                    ->when($booking->status === 'CANCELLED', function($query) {
+                        return $query->where('transaction_type', 'Booking Cancelled')
+                                   ->where('status', 'CANCELLED');
+                    })
+                    ->when($booking->status === 'COMPLETED', function($query) {
+                        return $query->where('transaction_type', 'Payment Completed')
+                                   ->where('status', 'COMPLETED');
+                    })
                     ->with('performer.user')
                     ->get();
 
-                // Get cancelled transactions
-                $cancelledTransactions = Transaction::where('booking_id', $booking->id)
-                    ->where('transaction_type', 'Booking Cancelled')
-                    ->where('status', 'CANCELLED')
-                    ->with('performer.user')
-                    ->get();
-
-                // Calculate total amount based on booking status
-                $totalAmount = $booking->status === 'CANCELLED' 
-                    ? $cancelledTransactions->sum('amount')
-                    : $pendingTransactions->sum('amount');
+                // Calculate total amount
+                $totalAmount = $transactions->sum('amount');
 
                 // Get performers with their amounts
-                $performers = $booking->status === 'CANCELLED'
-                    ? $cancelledTransactions->map(function ($transaction) {
-                        return [
-                            'name' => optional($transaction->performer->user)->name,
-                            'amount' => $transaction->amount
-                        ];
-                    })
-                    : $pendingTransactions->map(function ($transaction) {
-                        return [
-                            'name' => optional($transaction->performer->user)->name,
-                            'amount' => $transaction->amount
-                        ];
-                    });
+                $performers = $transactions->map(function ($transaction) {
+                    return [
+                        'name' => optional($transaction->performer->user)->name,
+                        'amount' => $transaction->amount
+                    ];
+                });
 
                 return [
                     'id' => $booking->id,
@@ -495,7 +492,8 @@ class AdminController extends Controller
                     'performers' => $booking->bookingPerformers->map(function ($bp) {
                         return $bp->performer->user->name;
                     })->implode(', '),
-                    'performer_details' => $performers
+                    'performer_details' => $performers,
+                    'created_at' => $booking->created_at->format('Y-m-d H:i:s')
                 ];
             });
 
@@ -503,6 +501,7 @@ class AdminController extends Controller
             'status' => 'success',
             'data' => $bookings
         ]);
+        
     } catch (\Exception $e) {
         Log::error("Error fetching booking details: " . $e->getMessage());
         return response()->json(['error' => 'Failed to fetch booking details'], 500);
@@ -518,6 +517,7 @@ class AdminController extends Controller
                     $transactions = Transaction::where('booking_id', $booking->id)
                         ->where('transaction_type', 'Waiting For Approval')
                         ->with('performer.user')
+                          ->orderBy('created_at', 'desc')
                         ->get();
 
                     return [
@@ -550,7 +550,8 @@ class AdminController extends Controller
                 ->map(function ($booking) {
                     $cancelledTransactions = Transaction::where('booking_id', $booking->id)
                         ->where('transaction_type', 'Booking Cancelled')
-                        ->where('status', 'CANCELLED')
+                          ->where('status', 'CANCELLED')
+                           ->orderBy('created_at', 'desc')
                         ->with('performer.user')
                         ->get();
 
@@ -578,10 +579,13 @@ class AdminController extends Controller
         try {
             $bookings = Booking::with(['client', 'bookingPerformers.performer.user'])
                 ->where('status', 'COMPLETED')
+                ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(function ($booking) {
                     $approvedTransactions = Transaction::where('booking_id', $booking->id)
-                        ->where('status', 'APPROVED')
+                        ->where('status', 'COMPLETED')
+                        ->where('transaction_type', 'Payment Completed')
+                        ->orderBy('created_at', 'desc')
                         ->with('performer.user')
                         ->get();
 
@@ -608,7 +612,8 @@ class AdminController extends Controller
     {
         try {
             $transactions = Transaction::with(['user', 'performer.user', 'booking'])
-                ->where('status', 'APPROVED')
+                ->where('status', 'COMPLETED')
+                ->where('transaction_type', 'Payment Completed')
                 ->orderBy('created_at', 'desc')
                 ->get()
                 ->map(function ($transaction) {
@@ -646,7 +651,7 @@ class AdminController extends Controller
             ->map(function ($booking) {
                 $transactions = Transaction::where('booking_id', $booking->id)
                     ->where(function($query) {
-                        $query->where('transaction_type', 'Waiting For Approval')
+                        $query->where('transaction_type', 'Payment Completed')
                               ->orWhere('transaction_type', 'Booking Cancelled');
                     })
                     ->get();

@@ -27,6 +27,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\WalletController;
 use App\Models\Applicants;
 use App\Models\Transaction;
+use App\Http\Controllers\RecommenderController;
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -69,6 +70,7 @@ Route::group(['middleware' => ['auth:sanctum', 'admin']], function () {
     Route::get('/admin/approved-bookings', [AdminController::class, 'getApprovedBookings']);
     Route::get('/admin/transaction-details', [AdminController::class, 'getTransactionDetails']);
     Route::get('/admin/talent-bookings', [AdminController::class, 'getBookingsByTalentDetails']);
+    /////
 //    Route::delete('/notifications/{id}', [ChatController::class, 'deleteNotification']);
 });
 
@@ -136,7 +138,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/portfolio/{portfolioId}', [CustomerController::class, 'getPortfolio']);
     Route::get('/municipalities', [AddressController::class, 'getMunicipalities']);
     Route::get('/municipalities/{id}/barangays', [AddressController::class, 'getBarangaysByMunicipality']);
-   
+    Route::get('/chats/unread-count', [ChatController::class, 'getUnreadCount']);
+    Route::get('/get-booking-notifications', [NotificationController::class, 'getBookingNotifications']);
+    Route::delete('/booking-notifications/{id}', [NotificationController::class, 'deleteBookingNotification']);
 });
 
 
@@ -181,7 +185,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/transactions/{id}/decline', [TransactionController::class, 'declineTransaction']);
     Route::post('/update-profile', [CustomerController::class, 'updateProfile']);
     Route::get('/client-info', [CustomerController::class, 'getLoggedInClient']);
-    Route::get('/getMyPost', [CustomerController::class, 'getUserPosts']);
+     Route::get('/getMyPost', [CustomerController::class, 'getUserPosts']);
     Route::post('/profile', [CustomerController::class, 'showProfile']); 
     // Route::get('/accepted-client', [BookingController::class, 'getAcceptedBookings']);
     Route::get('/performers/{performerId}/accepted-bookings', [BookingController::class, 'getAcceptedBookingsForPerformer']);
@@ -208,7 +212,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/get-notif', [ChatController::class, 'fetchChatNotifications']);
     Route::delete('/noty/{id}', [NotificationController::class, 'deleteNotifications']);
     Route::post('/chats/seen', [ChatController::class, 'markAsSeen']);
-     Route::get('/get-booking-notifications', [NotificationController::class, 'getBookingNotifications']);
+     Route::post('/notifications/mark-read/{id?}', [NotificationController::class, 'markAsRead']);
+      Route::post('/track-video-play', [CustomerController::class, 'trackVideoPlay']);
+    Route::get('/recommendations', [RecommenderController::class, 'getRecommendations']);
+    Route::get('/top-performers', [RecommenderController::class, 'getTopPerformers']);
+    
 
 
 }); 

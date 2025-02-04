@@ -102,66 +102,66 @@ class PerformerController extends Controller
     }
 
     // Update the performer portfolio
-    public function update(Request $request, $userId)
-    {
-        try {
-            $user = User::find($userId);
-            if (!$user) {
-                return response()->json(['message' => 'User not found'], 404);
-            }
-    
-            $portfolio = PerformerPortfolio::where('performer_id', $userId)->first();
-            if (!$portfolio) {
-                return response()->json(['message' => 'Portfolio not found'], 404);
-            }
-    
-            $validatedData = $request->validate([
-                'event_name' => 'nullable|string',
-                'theme_name' => 'nullable|string',
-                'talent_name' => 'nullable|array', // Changed to array
-                'talent_name.*' => 'string', // Validate each array item
-                'location' => 'nullable|string',
-                'description' => 'nullable|string',
-                'rate' => 'nullable|numeric',
-                'phone' => 'nullable|string|max:20',
-                'experience' => 'nullable|numeric',
-                'genres' => 'nullable|string',
-                'performer_type' => 'nullable|string',
-            ]);
-    
-            $portfolio->update($validatedData);
-    
-            // Handle talents array
-            if (!empty($validatedData['talent_name'])) {
-                // Delete existing talents
-                Talent::where('performer_id', $portfolio->id)->delete();
-                
-                // Create new talents from array
-                foreach ($validatedData['talent_name'] as $talentName) {
-                    Talent::create([
-                        'performer_id' => $portfolio->id,
-                        'talent_name' => $talentName,
-                    ]);
-                }
-                
-                // Update portfolio talent_name field with comma-separated string
-                $portfolio->talent_name = implode(',', $validatedData['talent_name']);
-                $portfolio->save();
-            }
-    
-            return response()->json([
-                'message' => 'Portfolio updated successfully',
-                'portfolio' => $portfolio->fresh(['talents'])
-            ]);
-    
-        } catch (\Exception $e) {
-            Log::error("Portfolio Update Error: " . $e->getMessage());
-            return response()->json([
-                'message' => 'Error updating portfolio',
-                'error' => $e->getMessage()
-            ], 500);
+   public function update(Request $request, $userId)
+{
+    try {
+        $user = User::find($userId);
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
         }
+
+        $portfolio = PerformerPortfolio::where('performer_id', $userId)->first();
+        if (!$portfolio) {
+            return response()->json(['message' => 'Portfolio not found'], 404);
+        }
+
+        $validatedData = $request->validate([
+            'event_name' => 'nullable|string',
+            'theme_name' => 'nullable|string',
+            'talent_name' => 'required|array', // Changed to array
+            'talent_name.*' => 'string', // Validate each array item
+            'location' => 'nullable|string',
+            'description' => 'nullable|string',
+            'rate' => 'nullable|numeric',
+            'phone' => 'nullable|string|max:20',
+            'experience' => 'nullable|numeric',
+            'genres' => 'nullable|string',
+            'performer_type' => 'nullable|string',
+        ]);
+
+        $portfolio->update($validatedData);
+
+        // Handle talents array
+        if (!empty($validatedData['talent_name'])) {
+            // Delete existing talents
+            Talent::where('performer_id', $portfolio->id)->delete();
+            
+            // Create new talents from array
+            foreach ($validatedData['talent_name'] as $talentName) {
+                Talent::create([
+                    'performer_id' => $portfolio->id,
+                    'talent_name' => $talentName,
+                ]);
+            }
+            
+            // Update portfolio talent_name field with comma-separated string
+            $portfolio->talent_name = implode(',', $validatedData['talent_name']);
+            $portfolio->save();
+        }
+
+        return response()->json([
+            'message' => 'Portfolio updated successfully',
+            'portfolio' => $portfolio->fresh(['talents'])
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error("Portfolio Update Error: " . $e->getMessage());
+        return response()->json([
+            'message' => 'Error updating portfolio',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
     
     
 

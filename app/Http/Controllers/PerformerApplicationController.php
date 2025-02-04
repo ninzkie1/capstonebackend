@@ -14,8 +14,8 @@ class PerformerApplicationController extends Controller
     {
         try {
             $applications = PerformerApplication::all()->map(function ($application) {
-                $application->id_picture_url = $application->id_picture ? asset('storage/' . $application->id_picture) : null;
-                $application->holding_id_picture_url = $application->holding_id_picture ? asset('storage/' . $application->holding_id_picture) : null;
+                $application->id_picture_url = $application->id_picture ? asset('/backend/talentoproject_backend/public/storage/' . $application->id_picture) : null;
+                $application->holding_id_picture_url = $application->holding_id_picture ? asset('/backend/talentoproject_backend/public/storage/' . $application->holding_id_picture) : null;
                 return $application;
             });
 

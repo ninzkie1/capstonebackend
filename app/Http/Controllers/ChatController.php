@@ -13,6 +13,7 @@ use App\Models\BookingPerformer;
 use App\Models\Applications;
 use App\Models\Post;
 use App\Models\GroupChat;
+use App\Models\ChatNotification;
 
 
 
@@ -61,7 +62,7 @@ class ChatController extends Controller
 
 
     // Store a new chat message
-    public function store(Request $request)
+ public function store(Request $request)
 {
     $request->validate([
         'sender_id' => 'required|exists:users,id',
@@ -308,35 +309,34 @@ public function canChatPostClient()
     }
 }
 
- public function fetchChatNotifications(Request $request)
-    {
-        try {
-            // Get the authenticated user
-            $user = Auth::user();
-            if (!$user) {
-                return response()->json(['status' => 'error', 'message' => 'User not authenticated.'], 401);
-            }
-
-            // Fetch recent chats where the user is either the sender or the receiver
-            $recentChats = Chat::where('receiver_id', $user->id)
-                ->orWhere('sender_id', $user->id)
-                ->with(['sender', 'receiver']) // Include sender and receiver details
-                ->latest() // Order by the most recent messages
-                ->limit(50) // Adjust the limit as needed
-                ->get();
-
-            return response()->json([
-                'status' => 'success',
-                'data' => $recentChats,
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to fetch chat notifications.',
-                'error' => $e->getMessage(),
-            ], 500);
+public function fetchChatNotifications(Request $request)
+{
+    try {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['status' => 'error', 'message' => 'User not authenticated.'], 401);
         }
+
+        // Only fetch chats where user is the receiver and receiver_id is not null
+        $recentChats = Chat::where('receiver_id', $user->id)
+            ->whereNotNull('receiver_id')
+            ->with(['sender'])
+            ->latest()
+            ->limit(50)
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $recentChats,
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to fetch chat notifications.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
 
     public function markAsSeen(Request $request)
     {
@@ -357,7 +357,7 @@ public function canChatPostClient()
             return response()->json(['error' => 'Failed to mark message as seen'], 500);
         }
     }
-    public function getUnreadCount()
+     public function getUnreadCount()
 {
     try {
         $user = Auth::user();

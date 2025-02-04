@@ -16,32 +16,43 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Carbon;
 use App\Models\Comment;
 
+
 class CustomerController extends Controller
 {
     public function index()
-    {
-        // Fetch all posts from the database and return as JSON
-        $posts = Post::all()->map(function ($post) {
-            // Ensure talents is decoded to array before returning to the frontend
-            $post->talents = json_decode($post->talents, true);
-            $post->comments = $post->comments->map(function ($comment) {
-                return [
-                    'id' => $comment->id,
-                    'content' => $comment->content,
-                    'created_at' => $comment->created_at,
-                    'user' => [
-                    'id' => $comment->user->id,
-                    'name' => $comment->user->name, // Include user name
-                ],
-                   
-                ];
-            });
-            return $post;
-        });
-        
+{
+    // Fetch all posts with related user and comments (including comment users)
+    $posts = Post::with(['user', 'comments.user'])->get()->map(function ($post) {
+        // Ensure talents is decoded to an array before returning to the frontend
+        $post->talents = json_decode($post->talents, true);
 
-        return response()->json($posts);
-    }
+        // Add the user details (including image_profile) for the post owner
+        $post->user = [
+            'id' => $post->user->id,
+            'name' => $post->user->name,
+            'image_profile' => $post->user->image_profile, // Include profile image
+        ];
+
+        // Map through comments and include user details (including image_profile)
+        $post->comments = $post->comments->map(function ($comment) {
+            return [
+                'id' => $comment->id,
+                'content' => $comment->content,
+                'created_at' => $comment->created_at,
+                'user' => [
+                    'id' => $comment->user->id,
+                    'name' => $comment->user->name,
+                    'image_profile' => $comment->user->image_profile, // Include profile image
+                ],
+            ];
+        });
+
+        return $post;
+    });
+
+    return response()->json($posts);
+}
+
 
     public function store(Request $request)
 {
@@ -200,13 +211,10 @@ class CustomerController extends Controller
                 'portfolio' => [
                     'portfolio_id' => $portfolio->id, // Return the portfolio's primary key as `portfolio_id`
                     'performer_id' => $portfolio->performer_id, // Include the `performer_id` for reference
-                    'theme_name' => $portfolio->theme_name,
-                    'event_name' => $portfolio->event_name,
                     'description' => $portfolio->description,
                     'experience' => $portfolio->experience,
                     'genres' => $portfolio->genres,
                     'talent_name' => $portfolio->talent_name,
-                    'rate' => $portfolio->rate,
                     'location' => $portfolio->location,
                     'performer_type' => $portfolio->performer_type,
                     'phone' => $portfolio->phone,
@@ -248,13 +256,15 @@ class CustomerController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'lastname' => 'required|string|max:255',
-            'image_profile' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'location' => 'required|string|max:255',
+            'image_profile' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:6048',
         ]);
     
         $user = Auth::user();
     
         $user->name = $request->input('name');
         $user->lastname = $request->input('lastname');
+        $user->location = $request->input('location');
     
         if ($request->hasFile('image_profile')) {
             // Delete old image if it exists
@@ -276,6 +286,7 @@ class CustomerController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'lastname' => $user->lastname,
+                'location' => $user->location,
                 'image_profile' => $user->image_profile ? asset('storage/' . $user->image_profile) : null,
             ],
         ]);
@@ -322,7 +333,7 @@ class CustomerController extends Controller
 
         // Fetch posts owned by the authenticated user
         $posts = Post::where('user_id', $user->id)
-            ->with(['comments.user']) // Eager load comments and their associated users
+            ->with(['user','comments.user']) // Eager load comments and their associated users
             ->get()
             ->map(function ($post) {
                 // Format the post data
@@ -351,39 +362,26 @@ class CustomerController extends Controller
         return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
 }
-
-public function replyToComment(Request $request, $commentId)
+public function trackVideoPlay(Request $request)
 {
-    try {
-        // Validate the request input
-        $validatedData = $request->validate([
-            'content' => 'required|string',
-        ]);
+    $request->validate([
+        'video_id' => 'required|exists:highlights,id',
+    ]);
 
-        // Get the authenticated user
-        $user = Auth::user();
+    $user = Auth::user();
+    $videoPlay = VideoPlay::firstOrCreate(
+        ['user_id' => $user->id, 'video_id' => $request->video_id],
+        ['play_count' => 0]
+    );
 
-        // Ensure the user is authenticated
-        if (!$user) {
-            return response()->json(['error' => 'User not authenticated.'], 401);
-        }
+    $videoPlay->increment('play_count');
 
-        // Find the comment the user wants to reply to
-        $comment = Comment::findOrFail($commentId);
-
-        // Create a reply to the comment
-        $reply = $comment->replies()->create([
-            'content' => $validatedData['content'],
-            'user_id' => $user->id,
-        ]);
-
-        return response()->json(['message' => 'Reply added successfully', 'reply' => $reply], 201);
-    } catch (\Exception $e) {
-        Log::error("Error replying to comment: " . $e->getMessage());
-        return response()->json(['error' => 'An unexpected error occurred'], 500);
-    }
+    return response()->json(['status' => 'success', 'message' => 'Video play tracked successfully']);
 }
 
+
+
+   
 }
     
     

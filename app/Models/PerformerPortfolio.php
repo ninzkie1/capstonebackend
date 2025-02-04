@@ -45,7 +45,7 @@ class PerformerPortfolio extends Model
     public function bookings()
     {
         return $this->belongsToMany(Booking::class, 'booking_performer', 'performer_id', 'booking_id')
-            ->withPivot('status')
+            ->withPivot(['status'])
             ->withTimestamps();
     }
     public function transactions()
@@ -54,7 +54,7 @@ class PerformerPortfolio extends Model
     }
     public function talents()
     {
-        return $this->hasMany(Talent::class, 'performer_id', 'performer_id');
+        return $this->hasMany(Talent::class, 'performer_id');
     }
     public function applications()
 {

@@ -74,7 +74,7 @@ class UnavailableDateController extends Controller
     try {
         $pendingBookings = BookingPerformer::where('performer_id', $performerId)
             ->whereHas('booking', function ($query) {
-                $query->where('status', 'ACCEPTED');
+                $query->where('status', 'PENDING');
             })
             ->with('booking')
             ->get();

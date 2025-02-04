@@ -43,7 +43,7 @@ class Booking extends Model
 public function performers()
 {
     return $this->belongsToMany(PerformerPortfolio::class, 'booking_performer', 'booking_id', 'performer_id')
-        ->withPivot('status')
+        ->withPivot(['status'])
         ->withTimestamps();
 }
 //bookingController for performer
